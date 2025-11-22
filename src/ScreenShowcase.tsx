@@ -44,9 +44,6 @@ const screens: Screen[] = [
 export default function ScreensShowcase() {
   return (
     <section className="px-8 py-16 bg-[#0A0F0D] relative">
-      <h2 className="text-4xl font-extrabold text-[#10B981] text-center mb-24">
-        Explore the App
-      </h2>
       <div className="flex flex-col">
         {screens.map((screen, index) => {
           const isEven = index % 2 === 0;
@@ -56,7 +53,7 @@ export default function ScreensShowcase() {
               key={screen.alt}
               className={`flex flex-col md:flex-row items-center gap-12 max-w-5xl mx-auto relative`}
               style={{
-                marginTop: index === 0 ? 0 : "-15rem", // overlap effect
+                marginTop:  "-10rem", // overlap effect
                 zIndex: screens.length - index, // stacking
               }}
             >
