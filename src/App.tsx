@@ -9,14 +9,6 @@ export default function App() {
       {/* Navbar */}
       <nav className="flex justify-between items-center px-8 py-6">
         <h1 className="text-2xl font-bold text-[#10B981]">Farab AI</h1>
-        <div className="space-x-4">
-          <button className="px-4 py-2 rounded-lg bg-[#22C55E] hover:bg-[#16A34A] transition">
-            Sign In
-          </button>
-          <button className="px-4 py-2 rounded-lg border border-[#10B981] hover:bg-[#10B981] hover:text-[#0A0F0D] transition">
-            Get Started
-          </button>
-        </div>
       </nav>
 
       {/* Hero Section */}
