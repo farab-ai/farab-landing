@@ -13,9 +13,6 @@ const LandingPage: React.FC = () => {
               </div>
               <span className="text-3xl font-bold" style={{ color: '#14b8a6', letterSpacing: '-0.5px' }}>farab</span>
             </div>
-            <button className="px-6 py-3 rounded-xl font-semibold transition-all hover:scale-105" style={{ background: 'rgba(20, 184, 166, 0.1)', border: '2px solid rgba(20, 184, 166, 0.3)', color: '#14b8a6' }}>
-              Sign In
-            </button>
           </nav>
         </header>
 
@@ -36,14 +33,14 @@ const LandingPage: React.FC = () => {
               <p className="text-xl mb-10 max-w-2xl mx-auto" style={{ color: '#4a5568', lineHeight: '1.7' }}>
                 Personalized AI learning paths that adapt to you. From Arabic to Python, create your journey with gamified progress.
               </p>
-              <div className="flex flex-wrap justify-center gap-4 mb-12">
+              {/* <div className="flex flex-wrap justify-center gap-4 mb-12">
                 <button className="px-10 py-5 rounded-2xl font-bold text-lg transition-all hover:scale-105" style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', color: 'white', boxShadow: '0 8px 24px rgba(20, 184, 166, 0.3)' }}>
                   Start Learning Free
                 </button>
                 <button className="px-10 py-5 rounded-2xl font-bold text-lg transition-all hover:scale-105" style={{ background: 'rgba(0, 0, 0, 0.1)', border: '2px solid rgba(0, 0, 0, 0.1)', color: '#2d3748' }}>
                   Watch Demo
                 </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Hero Phones */}
