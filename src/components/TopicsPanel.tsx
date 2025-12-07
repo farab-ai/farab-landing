@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { APIHOST } from "../utils/url";
 
-
 // API_BASE is only used for Admin CRUD endpoints (/api/admin/...)
 const API_BASE = `${APIHOST}/api/admin`;
 
@@ -15,11 +14,18 @@ interface Translation {
   zh?: string;
 }
 
+// Subtopic structure matching Go backend
+interface Subtopic {
+  id: string;
+  name: Translation;
+  order: number;
+}
+
 // Minimal structure for a Subject (Needed for dependency lookup)
 interface SubjectMinimal {
-    id: string;
-    code: string; // The code/ID of the subject (e.g., 'MATH')
-    name: Translation;
+  id: string;
+  code: string;
+  name: Translation;
 }
 
 /**
@@ -27,9 +33,9 @@ interface SubjectMinimal {
  */
 interface Topic {
   id: string;
-  subject_id: string; 
+  subject_id: string;
   name: Translation;
-  subtopics: string[];
+  subtopics: Subtopic[];
   created_at?: string;
   updated_at?: string;
 }
@@ -44,14 +50,20 @@ interface FormTranslation {
   zh: string;
 }
 
-interface TopicFormData {
-    id: string;
-    subject_id: string;
-    topic_name: FormTranslation;
-    subtopics: string[];
+interface SubtopicFormData {
+  id: string;
+  name: FormTranslation;
+  order: number;
 }
 
-// 🎨 Styles (Kept consistent with previous panels)
+interface TopicFormData {
+  id: string;
+  subject_id: string;
+  topic_name: FormTranslation;
+  subtopics: SubtopicFormData[];
+}
+
+// 🎨 Styles
 const PRIMARY_COLOR = "#0c4a6e";
 const TEXT_COLOR = "#1e293b";
 const MUTED_COLOR = "#64748b";
@@ -61,7 +73,6 @@ const DANGER_COLOR = "#dc2626";
 
 type Style = React.CSSProperties;
 
-// Helper function for dynamic button styles
 const getButtonStyle = (background: string, color: string, small: boolean = false): Style => ({
   padding: small ? "6px 12px" : "10px 20px",
   border: "none",
@@ -74,7 +85,6 @@ const getButtonStyle = (background: string, color: string, small: boolean = fals
   color,
 });
 
-// Helper style for danger button
 const btnDanger: Style = {
   background: DANGER_COLOR,
   color: "white",
@@ -82,27 +92,24 @@ const btnDanger: Style = {
   fontSize: "0.9em",
 };
 
-// Helper function for notification message styles
 const getNotificationStyle = (type: 'success' | 'error'): Style => ({
-    position: 'fixed',
-    top: '20px',
-    right: '20px',
-    padding: '15px 25px',
-    borderRadius: '6px',
-    fontWeight: 500,
-    maxWidth: '400px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-    zIndex: 1000,
-    background: type === 'success' ? '#10b981' : '#ef4444',
-    color: 'white',
+  position: 'fixed',
+  top: '20px',
+  right: '20px',
+  padding: '15px 25px',
+  borderRadius: '6px',
+  fontWeight: 500,
+  maxWidth: '400px',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+  zIndex: 1000,
+  background: type === 'success' ? '#10b981' : '#ef4444',
+  color: 'white',
 });
 
 const styles: { [key: string]: Style } = {
-  // --- Layout & Headers ---
   panel: { padding: "0 0 40px 0", background: "#fff" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" },
   heading: { fontSize: "28px", fontWeight: 700, color: TEXT_COLOR },
-  // --- Table Styles ---
   tableContainer: { border: `1px solid ${BORDER_COLOR}`, borderRadius: "8px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
   table: { width: "100%", borderCollapse: "collapse", fontSize: "15px" },
   tableHeader: { background: HOVER_COLOR, color: TEXT_COLOR, textAlign: "left", fontWeight: 600 },
@@ -110,40 +117,134 @@ const styles: { [key: string]: Style } = {
   tableDataCell: { padding: "12px 16px", color: TEXT_COLOR },
   actionCell: { display: 'flex', gap: '8px' },
   emptyState: { textAlign: "center", padding: "40px", color: MUTED_COLOR, border: `1px dashed ${BORDER_COLOR}`, borderRadius: "8px" },
-  // --- Form Styles ---
   formContainer: { background: "#fff", padding: "30px", border: `1px solid ${BORDER_COLOR}`, borderRadius: "8px", marginTop: "20px", boxShadow: "0 4px 8px rgba(0,0,0,0.05)" },
   formHeading: { color: TEXT_COLOR, fontSize: "20px", marginBottom: "20px", fontWeight: 600 },
   formGroup: { marginBottom: "20px" },
   label: { display: "block", color: TEXT_COLOR, fontWeight: 600, marginBottom: "8px", fontSize: "14px" },
-  input: { width: "100%", padding: "10px", border: `1px solid ${BORDER_COLOR}`, borderRadius: "6px", fontSize: "1em", marginBottom: "8px", transition: "border-color 0.2s" },
+  input: { width: "100%", padding: "10px", border: `1px solid ${BORDER_COLOR}`, borderRadius: "6px", fontSize: "1em", marginBottom: "8px", transition: "border-color 0.2s", boxSizing: "border-box" as const },
   formActions: { display: "flex", gap: "10px", marginTop: "25px" },
-  // --- Subtopics Styles ---
-  subtopicContainer: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" },
-  subtopicInput: { flex: 1, padding: "10px", border: `1px solid ${BORDER_COLOR}`, borderRadius: "6px", fontSize: "1em" },
-  subtopicTag: { display: "inline-flex", alignItems: "center", gap: "6px", background: "#e0f2fe", color: PRIMARY_COLOR, padding: "6px 12px", borderRadius: "16px", fontSize: "0.9em", marginRight: "8px", marginBottom: "8px" },
-  subtopicRemoveBtn: { background: "none", border: "none", cursor: "pointer", color: PRIMARY_COLOR, fontWeight: "bold", fontSize: "1em", padding: "0 4px" },
-  subtopicsList: { display: "flex", flexWrap: "wrap" as const, marginTop: "10px" },
+  // Subtopic styles
+  subtopicsSection: { marginTop: "10px" },
+  subtopicCard: {
+    border: `1px solid ${BORDER_COLOR}`,
+    borderRadius: "8px",
+    padding: "16px",
+    marginBottom: "12px",
+    background: HOVER_COLOR,
+  },
+  subtopicHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px",
+  },
+  subtopicTitle: {
+    fontWeight: 600,
+    color: TEXT_COLOR,
+    fontSize: "14px",
+  },
+  subtopicActions: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+  },
+  orderInput: {
+    width: "60px",
+    padding: "6px 8px",
+    border: `1px solid ${BORDER_COLOR}`,
+    borderRadius: "4px",
+    fontSize: "0.9em",
+    textAlign: "center" as const,
+  },
+  subtopicTranslations: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "8px",
+  },
+  subtopicInput: {
+    padding: "8px",
+    border: `1px solid ${BORDER_COLOR}`,
+    borderRadius: "4px",
+    fontSize: "0.9em",
+  },
+  addSubtopicBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "12px 16px",
+    border: `2px dashed ${BORDER_COLOR}`,
+    borderRadius: "8px",
+    background: "transparent",
+    cursor: "pointer",
+    color: PRIMARY_COLOR,
+    fontWeight: 500,
+    width: "100%",
+    justifyContent: "center",
+    transition: "all 0.2s ease",
+  },
+  subtopicTag: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    background: "#e0f2fe",
+    color: PRIMARY_COLOR,
+    padding: "6px 12px",
+    borderRadius: "16px",
+    fontSize: "0.85em",
+    marginRight: "8px",
+    marginBottom: "8px",
+  },
 };
 
-// ----------------------------------------------------------------------
-// Panel Logic and Handlers
-// ----------------------------------------------------------------------
+// Helper to generate UUID
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+const emptyFormTranslation = (): FormTranslation => ({
+  en: '', ru: '', kz: '', uz: '', kg: '', zh: ''
+});
 
 const initialFormData: TopicFormData = {
   id: '',
   subject_id: '',
-  topic_name: { en: '', ru: '', kz: '', uz: '', kg: '', zh: '' },
+  topic_name: emptyFormTranslation(),
   subtopics: [],
 };
 
+const mapSubtopicToFormData = (subtopic: Subtopic): SubtopicFormData => ({
+  id: subtopic.id,
+  name: {
+    en: subtopic.name?.en || '',
+    ru: subtopic.name?.ru || '',
+    kz: subtopic.name?.kz || '',
+    uz: subtopic.name?.uz || '',
+    kg: subtopic.name?.kg || '',
+    zh: subtopic.name?.zh || '',
+  },
+  order: subtopic.order || 0,
+});
+
 const mapTopicToFormData = (topic: Topic): TopicFormData => ({
-    id: topic.id,
-    subject_id: topic.subject_id,
-    topic_name: {
-        en: topic.name?.en || '', ru: topic.name?.ru || '', kz: topic.name?.kz || '',
-        uz: topic.name?.uz || '', kg: topic.name?.kg || '', zh: topic.name?.zh || '',
-    },
-    subtopics: topic.subtopics || [],
+  id: topic.id,
+  subject_id: topic.subject_id,
+  topic_name: {
+    en: topic.name?.en || '',
+    ru: topic.name?.ru || '',
+    kz: topic.name?.kz || '',
+    uz: topic.name?.uz || '',
+    kg: topic.name?.kg || '',
+    zh: topic.name?.zh || '',
+  },
+  subtopics: (topic.subtopics || []).map(mapSubtopicToFormData),
 });
 
 const TopicsPanel: React.FC = () => {
@@ -154,62 +255,49 @@ const TopicsPanel: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [newSubtopic, setNewSubtopic] = useState('');
 
   const showNotification = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 4000);
   };
 
-  // --- Combined Loader (Subjects -> Topics) ---
   const loadAllData = async () => {
     setLoading(true);
     let loadedSubjects: SubjectMinimal[] = [];
     let allTopics: Topic[] = [];
 
-    // 1. Load Subjects (Dependency - using non-admin read endpoint)
+    // 1. Load Subjects
     try {
-        const url = `${APIHOST}/api/subjects`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Failed to fetch subjects");
-        loadedSubjects = await response.json();
+      const url = `${APIHOST}/api/subjects`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch subjects");
+      loadedSubjects = await response.json();
     } catch (error: any) {
-        console.error("Failed to load subjects:", error);
-        showNotification("Error loading subject list. Using mock data.", 'error');
-        loadedSubjects = [
-            { id: 's1', code: 'MATH', name: { en: 'Mathematics' } },
-            { id: 's2', code: 'PHYSICS', name: { en: 'Physics' } },
-        ] as SubjectMinimal[];
+      console.error("Failed to load subjects:", error);
+      showNotification("Error loading subject list.", 'error');
+      loadedSubjects = [];
     }
     setSubjects(loadedSubjects);
 
-    // Set default subject ID for the form if not already set
     if (loadedSubjects.length > 0 && !formData.subject_id) {
-        setFormData(prev => ({ ...prev, subject_id: loadedSubjects[0].id }));
+      setFormData(prev => ({ ...prev, subject_id: loadedSubjects[0].id }));
     }
 
-    // 2. Load Topics (Using the requested non-admin endpoint: /api/topics)
+    // 2. Load Topics
     try {
-        const url = `${APIHOST}/api/topics`; 
-        const response = await fetch(url);
-
-        if (response.ok) {
-            allTopics = await response.json();
-            // Ensure subtopics is always an array
-            allTopics = allTopics.map(t => ({ ...t, subtopics: t.subtopics || [] }));
-        } else {
-            console.warn(`Failed to fetch all topics from ${url}: ${response.statusText}. Using mock.`);
-            allTopics = [
-                { id: '844fbde5-9f64-4ca8-b7a5-b4bc281e5c3f', subject_id: '10585795-26ce-46cf-bc59-3d3f3702551d', name: { en: 'Arithmetics', ru: 'Арифметика' }, subtopics: ['Addition', 'Subtraction'] },
-                { id: 't2', subject_id: 's2', name: { en: 'Kinematics' }, subtopics: [] },
-            ] as Topic[];
-        }
+      const url = `${APIHOST}/api/topics`;
+      const response = await fetch(url);
+      if (response.ok) {
+        allTopics = await response.json();
+        allTopics = allTopics.map(t => ({ ...t, subtopics: t.subtopics || [] }));
+      } else {
+        console.warn(`Failed to fetch topics: ${response.statusText}`);
+        allTopics = [];
+      }
     } catch (error: any) {
-        console.error("Failed to load topics:", error);
-        showNotification("Error fetching topics. Using mock data.", 'error');
-        allTopics = [
-            { id: '844fbde5-9f64-4ca8-b7a5-b4bc281e5c3f', subject_id: '10585795-26ce-46cf-bc59-3d3f3702551d', name: { en: 'Arithmetics' }, subtopics: [] },
-        ] as Topic[];
+      console.error("Failed to load topics:", error);
+      showNotification("Error fetching topics.", 'error');
+      allTopics = [];
     }
 
     setTopics(allTopics);
@@ -221,7 +309,7 @@ const TopicsPanel: React.FC = () => {
   }, []);
 
   // --- Form Handlers ---
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
 
     if (id.startsWith('topic-name-')) {
@@ -237,17 +325,15 @@ const TopicsPanel: React.FC = () => {
 
   // --- Subtopic Handlers ---
   const handleAddSubtopic = () => {
-    const trimmed = newSubtopic.trim();
-    if (!trimmed) return;
-    if (formData.subtopics.includes(trimmed)) {
-      showNotification('Subtopic already exists.', 'error');
-      return;
-    }
+    const newSubtopic: SubtopicFormData = {
+      id: generateUUID(),
+      name: emptyFormTranslation(),
+      order: formData.subtopics.length, // Auto-assign order
+    };
     setFormData(prev => ({
       ...prev,
-      subtopics: [...prev.subtopics, trimmed]
+      subtopics: [...prev.subtopics, newSubtopic]
     }));
-    setNewSubtopic('');
   };
 
   const handleRemoveSubtopic = (index: number) => {
@@ -257,40 +343,91 @@ const TopicsPanel: React.FC = () => {
     }));
   };
 
-  const handleSubtopicKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddSubtopic();
-    }
+  const handleSubtopicChange = (
+    index: number,
+    field: 'order' | keyof FormTranslation,
+    value: string | number
+  ) => {
+    setFormData(prev => {
+      const updatedSubtopics = [...prev.subtopics];
+      if (field === 'order') {
+        updatedSubtopics[index] = {
+          ...updatedSubtopics[index],
+          order: typeof value === 'number' ? value : parseInt(value, 10) || 0
+        };
+      } else {
+        updatedSubtopics[index] = {
+          ...updatedSubtopics[index],
+          name: {
+            ...updatedSubtopics[index].name,
+            [field]: value
+          }
+        };
+      }
+      return { ...prev, subtopics: updatedSubtopics };
+    });
   };
 
-  // --- Submit Handler (CRUD: Create/Update) ---
+  const moveSubtopic = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= formData.subtopics.length) return;
+
+    setFormData(prev => {
+      const updatedSubtopics = [...prev.subtopics];
+      [updatedSubtopics[index], updatedSubtopics[newIndex]] = [updatedSubtopics[newIndex], updatedSubtopics[index]];
+      // Update order values to match new positions
+      return {
+        ...prev,
+        subtopics: updatedSubtopics.map((st, i) => ({ ...st, order: i }))
+      };
+    });
+  };
+
+  // --- Submit Handler ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // CRUD operations use the admin endpoint
     const url = isEditing ? `${API_BASE}/topics/${formData.id}` : `${API_BASE}/topics`;
     const method = isEditing ? 'PUT' : 'POST';
 
-    // Validation
     if (!formData.subject_id) {
-        showNotification('Subject must be selected.', 'error');
-        return;
+      showNotification('Subject must be selected.', 'error');
+      return;
     }
     if (!formData.topic_name.en.trim()) {
-        showNotification('Topic Name (English) is required.', 'error');
-        return;
+      showNotification('Topic Name (English) is required.', 'error');
+      return;
     }
 
-    // Data must match the payload (with subtopics)
+    // Validate subtopics - at least EN name should be present
+    for (const st of formData.subtopics) {
+      if (!st.name.en.trim()) {
+        showNotification('All subtopics must have an English name.', 'error');
+        return;
+      }
+    }
+
+    // Convert form data to API format
+    const subtopicsForAPI: Subtopic[] = formData.subtopics.map((st, index) => ({
+      id: st.id,
+      name: {
+        en: st.name.en || undefined,
+        ru: st.name.ru || undefined,
+        kz: st.name.kz || undefined,
+        uz: st.name.uz || undefined,
+        kg: st.name.kg || undefined,
+        zh: st.name.zh || undefined,
+      },
+      order: st.order ?? index,
+    }));
+
     const dataToSend: any = {
       name: formData.topic_name,
-      subtopics: formData.subtopics,
+      subtopics: subtopicsForAPI,
     };
 
     if (!isEditing) {
-        // Add SubjectID only for creation (POST)
-        dataToSend.subject_id = formData.subject_id;
+      dataToSend.subject_id = formData.subject_id;
     }
 
     try {
@@ -307,7 +444,6 @@ const TopicsPanel: React.FC = () => {
 
       showNotification(`Topic ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
       hideForm();
-      // Re-fetch all data to refresh the table
       await loadAllData();
     } catch (error: any) {
       console.error("API Error:", error);
@@ -315,22 +451,18 @@ const TopicsPanel: React.FC = () => {
     }
   };
 
-  // --- Edit/Delete Handlers (CRUD: Read/Delete) ---
   const handleEdit = (topic: Topic) => {
     setFormData(mapTopicToFormData(topic));
     setIsEditing(true);
     setShowForm(true);
-    setNewSubtopic('');
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this topic? All associated quizzes/content will also be affected.')) {
+    if (!window.confirm('Are you sure you want to delete this topic?')) {
       return;
     }
     try {
-      // DELETE uses the admin endpoint
       const response = await fetch(`${API_BASE}/topics/${id}`, { method: 'DELETE' });
-
       if (response.status === 204 || response.ok) {
         showNotification('Topic deleted successfully!', 'success');
         await loadAllData();
@@ -346,22 +478,19 @@ const TopicsPanel: React.FC = () => {
 
   const showAddForm = () => {
     setFormData({
-        ...initialFormData,
-        subject_id: subjects.length > 0 ? subjects[0].id : '',
+      ...initialFormData,
+      subject_id: subjects.length > 0 ? subjects[0].id : '',
     });
     setIsEditing(false);
     setShowForm(true);
-    setNewSubtopic('');
   };
 
   const hideForm = () => {
     setShowForm(false);
     setFormData(initialFormData);
     setIsEditing(false);
-    setNewSubtopic('');
   };
 
-  // Render Helper for Translation Inputs
   const renderTranslationInputs = (keyPrefix: string, translationObject: FormTranslation) => {
     const langs: (keyof FormTranslation)[] = ['en', 'ru', 'kz', 'uz', 'kg', 'zh'];
     return langs.map(lang => (
@@ -373,28 +502,116 @@ const TopicsPanel: React.FC = () => {
         value={translationObject[lang] || ''}
         onChange={handleFormChange}
         style={styles.input}
-        required={lang === 'en'} // English name is required
+        required={lang === 'en'}
       />
     ));
   };
 
-  // Helper to find subject name for display
   const getSubjectName = (subjectId: string) => {
     const subject = subjects.find(s => s.id === subjectId);
     return subject
-        ? `${subject.name?.en || subject.code} (${subject.code})`
-        : `ID: ${subjectId}`;
+      ? `${subject.name?.en || subject.code} (${subject.code})`
+      : `ID: ${subjectId}`;
   };
 
-  // --- JSX Rendering ---
+  // Render subtopic editor in form
+  const renderSubtopicEditor = () => {
+    const langs: (keyof FormTranslation)[] = ['en', 'ru', 'kz', 'uz', 'kg', 'zh'];
+
+    return (
+      <div style={styles.subtopicsSection}>
+        {formData.subtopics
+          .sort((a, b) => a.order - b.order)
+          .map((subtopic, index) => (
+            <div key={subtopic.id} style={styles.subtopicCard}>
+              <div style={styles.subtopicHeader}>
+                <span style={styles.subtopicTitle}>
+                  Subtopic #{index + 1} {subtopic.name.en && `- ${subtopic.name.en}`}
+                </span>
+                <div style={styles.subtopicActions}>
+                  <label style={{ fontSize: '12px', color: MUTED_COLOR }}>Order:</label>
+                  <input
+                    type="number"
+                    value={subtopic.order}
+                    onChange={(e) => handleSubtopicChange(index, 'order', e.target.value)}
+                    style={styles.orderInput}
+                    min={0}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => moveSubtopic(index, 'up')}
+                    disabled={index === 0}
+                    style={{
+                      ...getButtonStyle(BORDER_COLOR, TEXT_COLOR, true),
+                      opacity: index === 0 ? 0.5 : 1,
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSubtopic(index, 'down')}
+                    disabled={index === formData.subtopics.length - 1}
+                    style={{
+                      ...getButtonStyle(BORDER_COLOR, TEXT_COLOR, true),
+                      opacity: index === formData.subtopics.length - 1 ? 0.5 : 1,
+                    }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSubtopic(index)}
+                    style={{ ...btnDanger, padding: '6px 12px' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+              <div style={styles.subtopicTranslations}>
+                {langs.map(lang => (
+                  <input
+                    key={`subtopic-${subtopic.id}-${lang}`}
+                    type="text"
+                    placeholder={`${lang.toUpperCase()}${lang === 'en' ? ' (required)' : ''}`}
+                    value={subtopic.name[lang] || ''}
+                    onChange={(e) => handleSubtopicChange(index, lang, e.target.value)}
+                    style={styles.subtopicInput}
+                    required={lang === 'en'}
+                  />
+                ))}
+              </div>
+              <small style={{ color: MUTED_COLOR, fontSize: '11px', marginTop: '8px', display: 'block' }}>
+                ID: {subtopic.id}
+              </small>
+            </div>
+          ))}
+
+        <button
+          type="button"
+          onClick={handleAddSubtopic}
+          style={styles.addSubtopicBtn}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = PRIMARY_COLOR;
+            e.currentTarget.style.background = '#f0f9ff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = BORDER_COLOR;
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          + Add Subtopic
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div style={styles.panel}>
-
       {message && (
         <div style={getNotificationStyle(message.type)}>{message.text}</div>
       )}
 
-      {/* Header */}
       <div style={styles.sectionHeader}>
         <h2 style={styles.heading}>Topic Management</h2>
         <button
@@ -414,64 +631,75 @@ const TopicsPanel: React.FC = () => {
           ) : topics.length === 0 ? (
             <div style={styles.emptyState}>
               <p>No topics added yet. Click "Add Topic" to get started.</p>
-              {subjects.length === 0 && <small style={{ color: DANGER_COLOR, marginTop: '10px' }}>* Cannot add topics until subjects are available.</small>}
+              {subjects.length === 0 && (
+                <small style={{ color: DANGER_COLOR, marginTop: '10px' }}>
+                  * Cannot add topics until subjects are available.
+                </small>
+              )}
             </div>
           ) : (
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeader}>
-                  <th style={{ ...styles.tableHeadCell, width: '15%' }}>ID</th>
+                  <th style={{ ...styles.tableHeadCell, width: '12%' }}>ID</th>
                   <th style={{ ...styles.tableHeadCell, width: '20%' }}>Name (EN)</th>
-                  <th style={{ ...styles.tableHeadCell, width: '20%' }}>Subject</th>
-                  <th style={{ ...styles.tableHeadCell, width: '25%' }}>Subtopics</th>
+                  <th style={{ ...styles.tableHeadCell, width: '18%' }}>Subject</th>
+                  <th style={{ ...styles.tableHeadCell, width: '30%' }}>Subtopics</th>
                   <th style={{ ...styles.tableHeadCell, width: '20%' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {topics.map(topic => (
-                    <tr
-                      key={topic.id}
-                      style={styles.tableBodyRow}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = HOVER_COLOR}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                    >
-                      <td style={styles.tableDataCell}>
-                        {/* Display truncated ID for readability */}
-                        <strong style={{ fontSize: '0.8em', fontFamily: 'monospace' }}>{topic.id.substring(0, 8)}...</strong>
-                      </td>
-                      <td style={styles.tableDataCell}>
-                        {topic.name?.en || '—'}
-                      </td>
-                      <td style={styles.tableDataCell}>
-                        {getSubjectName(topic.subject_id)}
-                      </td>
-                      <td style={styles.tableDataCell}>
-                        {topic.subtopics && topic.subtopics.length > 0 ? (
-                          <span style={{ fontSize: '0.9em', color: MUTED_COLOR }}>
-                            {topic.subtopics.slice(0, 3).join(', ')}
-                            {topic.subtopics.length > 3 && ` +${topic.subtopics.length - 3} more`}
-                          </span>
-                        ) : (
-                          <span style={{ color: MUTED_COLOR, fontStyle: 'italic' }}>None</span>
-                        )}
-                      </td>
-                      <td style={styles.tableDataCell}>
-                        <div style={styles.actionCell}>
-                          <button
-                            onClick={() => handleEdit(topic)}
-                            style={getButtonStyle(BORDER_COLOR, TEXT_COLOR, true)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(topic.id)}
-                            style={btnDanger}
-                          >
-                            Delete
-                          </button>
+                  <tr
+                    key={topic.id}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = HOVER_COLOR}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                  >
+                    <td style={styles.tableDataCell}>
+                      <strong style={{ fontSize: '0.8em', fontFamily: 'monospace' }}>
+                        {topic.id.substring(0, 8)}...
+                      </strong>
+                    </td>
+                    <td style={styles.tableDataCell}>{topic.name?.en || '—'}</td>
+                    <td style={styles.tableDataCell}>{getSubjectName(topic.subject_id)}</td>
+                    <td style={styles.tableDataCell}>
+                      {topic.subtopics && topic.subtopics.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {topic.subtopics
+                            .sort((a, b) => (a.order || 0) - (b.order || 0))
+                            .slice(0, 3)
+                            .map((st, idx) => (
+                              <span key={st.id || idx} style={styles.subtopicTag}>
+                                {st.name?.en || `#${idx + 1}`}
+                              </span>
+                            ))}
+                          {topic.subtopics.length > 3 && (
+                            <span style={{ ...styles.subtopicTag, background: '#f1f5f9', color: MUTED_COLOR }}>
+                              +{topic.subtopics.length - 3} more
+                            </span>
+                          )}
                         </div>
-                      </td>
-                    </tr>
+                      ) : (
+                        <span style={{ color: MUTED_COLOR, fontStyle: 'italic' }}>None</span>
+                      )}
+                    </td>
+                    <td style={styles.tableDataCell}>
+                      <div style={styles.actionCell}>
+                        <button
+                          onClick={() => handleEdit(topic)}
+                          style={getButtonStyle(BORDER_COLOR, TEXT_COLOR, true)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(topic.id)}
+                          style={btnDanger}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -479,14 +707,15 @@ const TopicsPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Topic Form (Create/Edit View) */}
+      {/* Topic Form (Create/Edit) */}
       {showForm && (
         <div style={styles.formContainer}>
           <h3 style={styles.formHeading}>
-            {isEditing ? `Edit Topic: ${formData.topic_name.en || formData.id.substring(0, 8)}...` : 'Add New Topic'}
+            {isEditing
+              ? `Edit Topic: ${formData.topic_name.en || formData.id.substring(0, 8)}...`
+              : 'Add New Topic'}
           </h3>
           <form onSubmit={handleSubmit}>
-
             <div style={styles.formGroup}>
               <label style={styles.label} htmlFor="subject_id">Linked Subject:</label>
               <select
@@ -498,12 +727,16 @@ const TopicsPanel: React.FC = () => {
                 disabled={isEditing || subjects.length === 0}
               >
                 {subjects.map(s => (
-                    <option key={s.id} value={s.id}>
-                        {s.name?.en || s.code} ({s.code})
-                    </option>
+                  <option key={s.id} value={s.id}>
+                    {s.name?.en || s.code} ({s.code})
+                  </option>
                 ))}
               </select>
-              {(isEditing || subjects.length === 0) && <small style={{ color: MUTED_COLOR, fontSize: '12px' }}>Subject cannot be changed after creation.</small>}
+              {(isEditing || subjects.length === 0) && (
+                <small style={{ color: MUTED_COLOR, fontSize: '12px' }}>
+                  Subject cannot be changed after creation.
+                </small>
+              )}
             </div>
 
             <div style={styles.formGroup}>
@@ -511,45 +744,15 @@ const TopicsPanel: React.FC = () => {
               {renderTranslationInputs('topic-name', formData.topic_name)}
             </div>
 
-            {/* Subtopics Section */}
             <div style={styles.formGroup}>
-              <label style={styles.label}>Subtopics:</label>
-              <div style={styles.subtopicContainer}>
-                <input
-                  type="text"
-                  placeholder="Enter subtopic name and press Enter or click Add"
-                  value={newSubtopic}
-                  onChange={(e) => setNewSubtopic(e.target.value)}
-                  onKeyDown={handleSubtopicKeyDown}
-                  style={styles.subtopicInput}
-                />
-                <button
-                  type="button"
-                  onClick={handleAddSubtopic}
-                  style={getButtonStyle(PRIMARY_COLOR, 'white', true)}
-                >
-                  Add
-                </button>
-              </div>
-              {formData.subtopics.length > 0 && (
-                <div style={styles.subtopicsList}>
-                  {formData.subtopics.map((subtopic, index) => (
-                    <span key={index} style={styles.subtopicTag}>
-                      {subtopic}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSubtopic(index)}
-                        style={styles.subtopicRemoveBtn}
-                        title="Remove subtopic"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
+              <label style={styles.label}>
+                Subtopics ({formData.subtopics.length}):
+              </label>
+              {renderSubtopicEditor()}
               {formData.subtopics.length === 0 && (
-                <small style={{ color: MUTED_COLOR, fontSize: '12px' }}>No subtopics added yet.</small>
+                <small style={{ color: MUTED_COLOR, fontSize: '12px', display: 'block', marginTop: '8px' }}>
+                  No subtopics added. Click "Add Subtopic" to create one.
+                </small>
               )}
             </div>
 
