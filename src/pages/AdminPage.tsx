@@ -9,11 +9,11 @@ import QuestionsPanel from "../components/QuestionsPanel";
 
 // 📚 Data
 const ITEMS: { key: string; label: string }[] = [
-  { key: "countries", label: "Countries" },
-  { key: "exams", label: "Exams" },
-  { key: "subjects", label: "Subjects" },
-  { key: "topics", label: "Topics" },
-  { key: "onboarding-quizzes", label: "Onboarding Quizzes" },
+  { key: "countries", label: "Страны" },
+  { key: "exams", label: "Экзамены" },
+  { key: "subjects", label: "Предметы" },
+  { key: "topics", label: "Темы" },
+  { key: "onboarding-quizzes", label: "Диагностические тесты" },
 ];
 
 // 🎨 Professional & Simple Styles
