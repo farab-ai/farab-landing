@@ -23,12 +23,13 @@ interface SubjectMinimal {
 }
 
 /**
- * Topic interface reflecting the simplified DBTopic structure (no topic_code).
+ * Topic interface reflecting the DBTopic structure with subtopics.
  */
 interface Topic {
   id: string;
   subject_id: string; 
-  name: Translation;  
+  name: Translation;
+  subtopics: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -46,7 +47,8 @@ interface FormTranslation {
 interface TopicFormData {
     id: string;
     subject_id: string;
-    topic_name: FormTranslation; // Mapped to name for API
+    topic_name: FormTranslation;
+    subtopics: string[];
 }
 
 // 🎨 Styles (Kept consistent with previous panels)
@@ -54,7 +56,7 @@ const PRIMARY_COLOR = "#0c4a6e";
 const TEXT_COLOR = "#1e293b";
 const MUTED_COLOR = "#64748b";
 const BORDER_COLOR = "#e2e8f0";
-const HOVER_COLOR = "#f8fauc";
+const HOVER_COLOR = "#f8fafc";
 const DANGER_COLOR = "#dc2626";
 
 type Style = React.CSSProperties;
@@ -74,7 +76,7 @@ const getButtonStyle = (background: string, color: string, small: boolean = fals
 
 // Helper style for danger button
 const btnDanger: Style = {
-  background: DANGER_COLOR, // Red 600
+  background: DANGER_COLOR,
   color: "white",
   padding: "8px 16px",
   fontSize: "0.9em",
@@ -115,6 +117,12 @@ const styles: { [key: string]: Style } = {
   label: { display: "block", color: TEXT_COLOR, fontWeight: 600, marginBottom: "8px", fontSize: "14px" },
   input: { width: "100%", padding: "10px", border: `1px solid ${BORDER_COLOR}`, borderRadius: "6px", fontSize: "1em", marginBottom: "8px", transition: "border-color 0.2s" },
   formActions: { display: "flex", gap: "10px", marginTop: "25px" },
+  // --- Subtopics Styles ---
+  subtopicContainer: { display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" },
+  subtopicInput: { flex: 1, padding: "10px", border: `1px solid ${BORDER_COLOR}`, borderRadius: "6px", fontSize: "1em" },
+  subtopicTag: { display: "inline-flex", alignItems: "center", gap: "6px", background: "#e0f2fe", color: PRIMARY_COLOR, padding: "6px 12px", borderRadius: "16px", fontSize: "0.9em", marginRight: "8px", marginBottom: "8px" },
+  subtopicRemoveBtn: { background: "none", border: "none", cursor: "pointer", color: PRIMARY_COLOR, fontWeight: "bold", fontSize: "1em", padding: "0 4px" },
+  subtopicsList: { display: "flex", flexWrap: "wrap" as const, marginTop: "10px" },
 };
 
 // ----------------------------------------------------------------------
@@ -125,6 +133,7 @@ const initialFormData: TopicFormData = {
   id: '',
   subject_id: '',
   topic_name: { en: '', ru: '', kz: '', uz: '', kg: '', zh: '' },
+  subtopics: [],
 };
 
 const mapTopicToFormData = (topic: Topic): TopicFormData => ({
@@ -134,6 +143,7 @@ const mapTopicToFormData = (topic: Topic): TopicFormData => ({
         en: topic.name?.en || '', ru: topic.name?.ru || '', kz: topic.name?.kz || '',
         uz: topic.name?.uz || '', kg: topic.name?.kg || '', zh: topic.name?.zh || '',
     },
+    subtopics: topic.subtopics || [],
 });
 
 const TopicsPanel: React.FC = () => {
@@ -144,6 +154,7 @@ const TopicsPanel: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [newSubtopic, setNewSubtopic] = useState('');
 
   const showNotification = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
@@ -184,18 +195,20 @@ const TopicsPanel: React.FC = () => {
 
         if (response.ok) {
             allTopics = await response.json();
+            // Ensure subtopics is always an array
+            allTopics = allTopics.map(t => ({ ...t, subtopics: t.subtopics || [] }));
         } else {
             console.warn(`Failed to fetch all topics from ${url}: ${response.statusText}. Using mock.`);
             allTopics = [
-                { id: '844fbde5-9f64-4ca8-b7a5-b4bc281e5c3f', subject_id: '10585795-26ce-46cf-bc59-3d3f3702551d', name: { en: 'Arithmetics', ru: 'Арифметика' } },
-                { id: 't2', subject_id: 's2', name: { en: 'Kinematics' } },
+                { id: '844fbde5-9f64-4ca8-b7a5-b4bc281e5c3f', subject_id: '10585795-26ce-46cf-bc59-3d3f3702551d', name: { en: 'Arithmetics', ru: 'Арифметика' }, subtopics: ['Addition', 'Subtraction'] },
+                { id: 't2', subject_id: 's2', name: { en: 'Kinematics' }, subtopics: [] },
             ] as Topic[];
         }
     } catch (error: any) {
         console.error("Failed to load topics:", error);
         showNotification("Error fetching topics. Using mock data.", 'error');
         allTopics = [
-            { id: '844fbde5-9f64-4ca8-b7a5-b4bc281e5c3f', subject_id: '10585795-26ce-46cf-bc59-3d3f3702551d', name: { en: 'Arithmetics' } },
+            { id: '844fbde5-9f64-4ca8-b7a5-b4bc281e5c3f', subject_id: '10585795-26ce-46cf-bc59-3d3f3702551d', name: { en: 'Arithmetics' }, subtopics: [] },
         ] as Topic[];
     }
 
@@ -222,6 +235,35 @@ const TopicsPanel: React.FC = () => {
     }
   };
 
+  // --- Subtopic Handlers ---
+  const handleAddSubtopic = () => {
+    const trimmed = newSubtopic.trim();
+    if (!trimmed) return;
+    if (formData.subtopics.includes(trimmed)) {
+      showNotification('Subtopic already exists.', 'error');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      subtopics: [...prev.subtopics, trimmed]
+    }));
+    setNewSubtopic('');
+  };
+
+  const handleRemoveSubtopic = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      subtopics: prev.subtopics.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSubtopicKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddSubtopic();
+    }
+  };
+
   // --- Submit Handler (CRUD: Create/Update) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,9 +282,10 @@ const TopicsPanel: React.FC = () => {
         return;
     }
 
-    // Data must match the payload (without topic_code)
+    // Data must match the payload (with subtopics)
     const dataToSend: any = {
       name: formData.topic_name,
+      subtopics: formData.subtopics,
     };
 
     if (!isEditing) {
@@ -277,6 +320,7 @@ const TopicsPanel: React.FC = () => {
     setFormData(mapTopicToFormData(topic));
     setIsEditing(true);
     setShowForm(true);
+    setNewSubtopic('');
   };
 
   const handleDelete = async (id: string) => {
@@ -307,12 +351,14 @@ const TopicsPanel: React.FC = () => {
     });
     setIsEditing(false);
     setShowForm(true);
+    setNewSubtopic('');
   };
 
   const hideForm = () => {
     setShowForm(false);
     setFormData(initialFormData);
     setIsEditing(false);
+    setNewSubtopic('');
   };
 
   // Render Helper for Translation Inputs
@@ -374,9 +420,10 @@ const TopicsPanel: React.FC = () => {
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeader}>
-                  <th style={{ ...styles.tableHeadCell, width: '25%' }}>ID</th>
-                  <th style={{ ...styles.tableHeadCell, width: '30%' }}>Name (EN)</th>
-                  <th style={{ ...styles.tableHeadCell, width: '25%' }}>Subject</th>
+                  <th style={{ ...styles.tableHeadCell, width: '15%' }}>ID</th>
+                  <th style={{ ...styles.tableHeadCell, width: '20%' }}>Name (EN)</th>
+                  <th style={{ ...styles.tableHeadCell, width: '20%' }}>Subject</th>
+                  <th style={{ ...styles.tableHeadCell, width: '25%' }}>Subtopics</th>
                   <th style={{ ...styles.tableHeadCell, width: '20%' }}>Actions</th>
                 </tr>
               </thead>
@@ -397,6 +444,16 @@ const TopicsPanel: React.FC = () => {
                       </td>
                       <td style={styles.tableDataCell}>
                         {getSubjectName(topic.subject_id)}
+                      </td>
+                      <td style={styles.tableDataCell}>
+                        {topic.subtopics && topic.subtopics.length > 0 ? (
+                          <span style={{ fontSize: '0.9em', color: MUTED_COLOR }}>
+                            {topic.subtopics.slice(0, 3).join(', ')}
+                            {topic.subtopics.length > 3 && ` +${topic.subtopics.length - 3} more`}
+                          </span>
+                        ) : (
+                          <span style={{ color: MUTED_COLOR, fontStyle: 'italic' }}>None</span>
+                        )}
                       </td>
                       <td style={styles.tableDataCell}>
                         <div style={styles.actionCell}>
@@ -448,12 +505,52 @@ const TopicsPanel: React.FC = () => {
               </select>
               {(isEditing || subjects.length === 0) && <small style={{ color: MUTED_COLOR, fontSize: '12px' }}>Subject cannot be changed after creation.</small>}
             </div>
-            
-            {/* The topic_code field is intentionally omitted to match the required data structure */}
 
             <div style={styles.formGroup}>
               <label style={styles.label}>Topic Names (Translations - EN is required):</label>
               {renderTranslationInputs('topic-name', formData.topic_name)}
+            </div>
+
+            {/* Subtopics Section */}
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Subtopics:</label>
+              <div style={styles.subtopicContainer}>
+                <input
+                  type="text"
+                  placeholder="Enter subtopic name and press Enter or click Add"
+                  value={newSubtopic}
+                  onChange={(e) => setNewSubtopic(e.target.value)}
+                  onKeyDown={handleSubtopicKeyDown}
+                  style={styles.subtopicInput}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSubtopic}
+                  style={getButtonStyle(PRIMARY_COLOR, 'white', true)}
+                >
+                  Add
+                </button>
+              </div>
+              {formData.subtopics.length > 0 && (
+                <div style={styles.subtopicsList}>
+                  {formData.subtopics.map((subtopic, index) => (
+                    <span key={index} style={styles.subtopicTag}>
+                      {subtopic}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubtopic(index)}
+                        style={styles.subtopicRemoveBtn}
+                        title="Remove subtopic"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {formData.subtopics.length === 0 && (
+                <small style={{ color: MUTED_COLOR, fontSize: '12px' }}>No subtopics added yet.</small>
+              )}
             </div>
 
             <div style={styles.formActions}>
