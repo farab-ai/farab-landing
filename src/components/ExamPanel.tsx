@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { APIHOST } from "../utils/url";
 
-// 🌐 API Configuration
-const API_HOST = "http://localhost:8080";
 // API_BASE is only used for Admin CRUD endpoints (/api/admin/...)
-const API_BASE = `${API_HOST}/api/admin`; 
+const API_BASE = `${APIHOST}/api/admin`; 
 
 // 🌍 Data Structures
 interface Translation {
@@ -183,7 +182,7 @@ const ExamPanel: React.FC = () => {
     // 2. Load Exams (Using the new /api/exams endpoint)
     let allExams: Exam[] = [];
     try {
-        const url = `${API_HOST}/api/exams`; // <-- UPDATED ENDPOINT
+        const url = `${APIHOST}/api/exams`; // <-- UPDATED ENDPOINT
         const response = await fetch(url);
         
         if (response.ok) {

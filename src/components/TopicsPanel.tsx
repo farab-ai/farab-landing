@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { APIHOST } from "../utils/url";
 
-// 🌐 API Configuration
-const API_HOST = "http://localhost:8080";
+
 // API_BASE is only used for Admin CRUD endpoints (/api/admin/...)
-const API_BASE = `${API_HOST}/api/admin`;
+const API_BASE = `${APIHOST}/api/admin`;
 
 // 🌍 Data Structures
 interface Translation {
@@ -158,7 +158,7 @@ const TopicsPanel: React.FC = () => {
 
     // 1. Load Subjects (Dependency - using non-admin read endpoint)
     try {
-        const url = `${API_HOST}/api/subjects`;
+        const url = `${APIHOST}/api/subjects`;
         const response = await fetch(url);
         if (!response.ok) throw new Error("Failed to fetch subjects");
         loadedSubjects = await response.json();
@@ -179,7 +179,7 @@ const TopicsPanel: React.FC = () => {
 
     // 2. Load Topics (Using the requested non-admin endpoint: /api/topics)
     try {
-        const url = `${API_HOST}/api/topics`; 
+        const url = `${APIHOST}/api/topics`; 
         const response = await fetch(url);
 
         if (response.ok) {

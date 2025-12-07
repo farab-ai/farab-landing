@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { v4 as uuidv4 } from 'uuid';
+import { APIHOST } from "../utils/url";
 
 // 🌐 API Configuration
-const API_HOST = "http://localhost:8080";
-const API_BASE = `${API_HOST}/api/admin`; // For POST, PUT, DELETE
-const API_READ_BASE = `${API_HOST}/api`; // For GET /api/onboarding-questions
+const API_BASE = `${APIHOST}/api/admin`; // For POST, PUT, DELETE
+const API_READ_BASE = `${APIHOST}/api`; // For GET /api/onboarding-questions
 
 // --- Data Structures (Same as before) ---
 interface SubjectMinimal { id: string; code: string; name: { en?: string } }
@@ -267,8 +267,8 @@ const OnboardingQuestionsPanel: React.FC = () => {
 
     try {
         const [subjectRes, topicRes, quizRes] = await Promise.all([
-            fetch(`${API_HOST}/api/subjects`),
-            fetch(`${API_HOST}/api/topics`),
+            fetch(`${APIHOST}/api/subjects`),
+            fetch(`${APIHOST}/api/topics`),
             fetch(`${API_READ_BASE}/onboarding-questions`)
         ]);
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { v4 as uuidv4 } from 'uuid'; // Used for unique IDs in dynamic lists
+import { APIHOST } from "../utils/url";
 
 // 🌐 API Configuration - Using the specified base URL
-const API_HOST = "http://localhost:8080";
-const API_BASE = `${API_HOST}/api/admin`; 
+const API_BASE = `${APIHOST}/api/admin`; 
 
 // 🌍 Data Structures
 interface Translation {
