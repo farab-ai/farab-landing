@@ -715,4 +715,416 @@ describe('CourseTemplatePanel', () => {
       expect(screen.getByText('Level deleted successfully!')).toBeInTheDocument();
     });
   });
+
+  test('displays nodes when level is expanded', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Introduction to Fractions',
+                  description: 'Learn basic fraction concepts',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'lesson',
+                      title: 'What is a Fraction?',
+                      description: 'Introduction to fractions',
+                      points: 15,
+                      order: 1,
+                      emoji: '🍕',
+                      estimatedMinutes: 10,
+                    },
+                    {
+                      id: 'node2',
+                      type: 'quiz',
+                      title: 'Fraction Quiz',
+                      description: 'Test your knowledge',
+                      points: 30,
+                      order: 2,
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction to Fractions')).toBeInTheDocument();
+      expect(screen.getByText('2 nodes')).toBeInTheDocument();
+    });
+
+    // Level should not be expanded initially, nodes should not be visible
+    expect(screen.queryByText('📚 Lesson: What is a Fraction?')).not.toBeInTheDocument();
+    expect(screen.queryByText('📝 Quiz: Fraction Quiz')).not.toBeInTheDocument();
+
+    // Click to expand the level
+    fireEvent.click(screen.getByText('Level 1: Introduction to Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Nodes in this level:')).toBeInTheDocument();
+      expect(screen.getByText(/📚 Lesson: What is a Fraction\?/)).toBeInTheDocument();
+      expect(screen.getByText(/📝 Quiz: Fraction Quiz/)).toBeInTheDocument();
+    });
+
+    // Check that node badges are displayed
+    const pointsBadges = screen.getAllByText(/pts/);
+    expect(pointsBadges.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('displays lesson content when node is expanded', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Introduction to Fractions',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'lesson',
+                      title: 'What is a Fraction?',
+                      points: 15,
+                      order: 1,
+                      contentBlocks: [
+                        {
+                          id: 'block1',
+                          type: 'heading',
+                          text: 'Understanding Fractions',
+                          level: 2,
+                        },
+                        {
+                          id: 'block2',
+                          type: 'text',
+                          content: 'A fraction represents a part of a whole.',
+                        },
+                        {
+                          id: 'block3',
+                          type: 'bulletList',
+                          items: ['1/2 is one half', '1/3 is one third'],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction to Fractions')).toBeInTheDocument();
+    });
+
+    // Expand the level
+    fireEvent.click(screen.getByText('Level 1: Introduction to Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📚 Lesson: What is a Fraction\?/)).toBeInTheDocument();
+    });
+
+    // Content should not be visible initially
+    expect(screen.queryByText('Understanding Fractions')).not.toBeInTheDocument();
+    expect(screen.queryByText('A fraction represents a part of a whole.')).not.toBeInTheDocument();
+
+    // Click to expand the node
+    const lessonNode = screen.getByText(/📚 Lesson: What is a Fraction\?/);
+    fireEvent.click(lessonNode);
+
+    await waitFor(() => {
+      expect(screen.getByText('Lesson Content:')).toBeInTheDocument();
+      expect(screen.getByText('Understanding Fractions')).toBeInTheDocument();
+      expect(screen.getByText('A fraction represents a part of a whole.')).toBeInTheDocument();
+      expect(screen.getByText('1/2 is one half')).toBeInTheDocument();
+      expect(screen.getByText('1/3 is one third')).toBeInTheDocument();
+    });
+  });
+
+  test('displays quiz questions when quiz node is expanded', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Introduction to Fractions',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'quiz',
+                      title: 'Fraction Quiz',
+                      points: 30,
+                      order: 1,
+                      questions: [
+                        {
+                          id: 'q1',
+                          type: 'singleChoice',
+                          question: 'What does the denominator represent?',
+                          options: [
+                            {
+                              id: 'opt1',
+                              text: 'Total parts',
+                              isCorrect: true,
+                            },
+                            {
+                              id: 'opt2',
+                              text: 'Parts taken',
+                              isCorrect: false,
+                            },
+                          ],
+                          points: 10,
+                          explanation: 'The denominator shows total parts.',
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction to Fractions')).toBeInTheDocument();
+    });
+
+    // Expand the level
+    fireEvent.click(screen.getByText('Level 1: Introduction to Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📝 Quiz: Fraction Quiz/)).toBeInTheDocument();
+    });
+
+    // Questions should not be visible initially
+    expect(screen.queryByText('Quiz Questions (1):')).not.toBeInTheDocument();
+
+    // Click to expand the quiz node
+    const quizNode = screen.getByText(/📝 Quiz: Fraction Quiz/);
+    fireEvent.click(quizNode);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quiz Questions (1):')).toBeInTheDocument();
+      expect(screen.getByText(/Question 1/)).toBeInTheDocument();
+      expect(screen.getByText('What does the denominator represent?')).toBeInTheDocument();
+      expect(screen.getByText(/✓ Total parts/)).toBeInTheDocument();
+      expect(screen.getByText(/○ Parts taken/)).toBeInTheDocument();
+      expect(screen.getByText(/Explanation: The denominator shows total parts./)).toBeInTheDocument();
+    });
+  });
 });

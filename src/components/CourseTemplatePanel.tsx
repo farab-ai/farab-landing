@@ -65,6 +65,50 @@ interface Level {
   description?: string;
   color?: string;
   order: number;
+  nodes?: Node[];
+}
+
+// Node represents either a lesson or quiz within a level
+interface Node {
+  id: string;
+  type: 'lesson' | 'quiz';
+  title: string;
+  description?: string;
+  points: number;
+  order: number;
+  subtitle?: string;
+  emoji?: string;
+  contentBlocks?: ContentBlock[];
+  questions?: QuizQuestion[];
+  estimatedMinutes?: number;
+}
+
+// ContentBlock represents a content element within a lesson
+interface ContentBlock {
+  id: string;
+  type: 'heading' | 'text' | 'equation' | 'bulletList' | 'divider';
+  text?: string;
+  content?: string;
+  level?: number;
+  items?: string[];
+}
+
+// QuizQuestion represents a question in a quiz
+interface QuizQuestion {
+  id: string;
+  type: 'singleChoice' | 'trueFalse' | 'fillInBlank';
+  question: string;
+  options: QuizOption[];
+  points: number;
+  explanation: string;
+  correctAnswer?: string;
+}
+
+// QuizOption represents an option for a quiz question
+interface QuizOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
 }
 
 // Minimal Exam structure
@@ -309,6 +353,8 @@ const CourseTemplatePanel: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
   const [regeneratePrompt, setRegeneratePrompt] = useState("");
   const [processingLevel, setProcessingLevel] = useState(false);
+  const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
   const showNotification = (text: string, type: "success" | "error") => {
     setMessage({ text, type });
@@ -628,6 +674,31 @@ const CourseTemplatePanel: React.FC = () => {
     setSelectedLevel(null);
   };
 
+  // --- Toggle Expand/Collapse Handlers ---
+  const toggleLevelExpand = (levelId: string) => {
+    setExpandedLevels((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(levelId)) {
+        newSet.delete(levelId);
+      } else {
+        newSet.add(levelId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleNodeExpand = (nodeId: string) => {
+    setExpandedNodes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
+      }
+      return newSet;
+    });
+  };
+
   // --- Utility Functions ---
   const getTranslationValue = (translation: Translation | undefined): string => {
     if (!translation) return "N/A";
@@ -925,6 +996,297 @@ const CourseTemplatePanel: React.FC = () => {
     );
   };
 
+  // --- Render Content Block ---
+  const renderContentBlock = (block: ContentBlock) => {
+    switch (block.type) {
+      case "heading":
+        return (
+          <div
+            key={block.id}
+            style={{
+              fontSize: block.level === 2 ? "1.2em" : "1.1em",
+              fontWeight: 600,
+              color: TEXT_COLOR,
+              marginTop: "15px",
+              marginBottom: "8px",
+            }}
+          >
+            {block.text}
+          </div>
+        );
+      case "text":
+        return (
+          <div
+            key={block.id}
+            style={{
+              fontSize: "0.95em",
+              color: TEXT_COLOR,
+              marginBottom: "10px",
+              lineHeight: "1.6",
+            }}
+          >
+            {block.content}
+          </div>
+        );
+      case "equation":
+        return (
+          <div
+            key={block.id}
+            style={{
+              fontSize: "1em",
+              color: TEXT_COLOR,
+              marginBottom: "10px",
+              fontFamily: "monospace",
+              background: HOVER_COLOR,
+              padding: "10px",
+              borderRadius: "4px",
+            }}
+          >
+            {block.content}
+          </div>
+        );
+      case "bulletList":
+        return (
+          <ul
+            key={block.id}
+            style={{
+              fontSize: "0.95em",
+              color: TEXT_COLOR,
+              marginBottom: "10px",
+              paddingLeft: "20px",
+            }}
+          >
+            {block.items?.map((item, idx) => (
+              <li key={idx} style={{ marginBottom: "5px" }}>
+                {item}
+              </li>
+            ))}
+          </ul>
+        );
+      case "divider":
+        return (
+          <hr
+            key={block.id}
+            style={{
+              border: "none",
+              borderTop: `1px solid ${BORDER_COLOR}`,
+              margin: "15px 0",
+            }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // --- Render Quiz Question ---
+  const renderQuizQuestion = (question: QuizQuestion, index: number) => {
+    return (
+      <div
+        key={question.id}
+        style={{
+          marginBottom: "15px",
+          padding: "12px",
+          background: HOVER_COLOR,
+          borderRadius: "6px",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            color: TEXT_COLOR,
+            marginBottom: "8px",
+          }}
+        >
+          Question {index + 1} ({question.type}, {question.points} points):
+        </div>
+        <div
+          style={{
+            fontSize: "0.95em",
+            color: TEXT_COLOR,
+            marginBottom: "8px",
+          }}
+        >
+          {question.question}
+        </div>
+        {question.options && question.options.length > 0 && (
+          <div style={{ marginLeft: "15px", marginBottom: "8px" }}>
+            {question.options.map((opt) => (
+              <div
+                key={opt.id}
+                style={{
+                  fontSize: "0.9em",
+                  color: TEXT_COLOR,
+                  marginBottom: "4px",
+                }}
+              >
+                {opt.isCorrect ? "✓ " : "○ "}
+                {opt.text}
+              </div>
+            ))}
+          </div>
+        )}
+        {question.correctAnswer && (
+          <div
+            style={{
+              fontSize: "0.9em",
+              color: MUTED_COLOR,
+              marginBottom: "4px",
+            }}
+          >
+            <strong>Correct Answer:</strong> {question.correctAnswer}
+          </div>
+        )}
+        <div
+          style={{
+            fontSize: "0.85em",
+            color: MUTED_COLOR,
+            fontStyle: "italic",
+          }}
+        >
+          Explanation: {question.explanation}
+        </div>
+      </div>
+    );
+  };
+
+  // --- Render Node Content ---
+  const renderNodeContent = (node: Node) => {
+    const isExpanded = expandedNodes.has(node.id);
+
+    return (
+      <div
+        key={node.id}
+        style={{
+          marginBottom: "10px",
+          border: `1px solid ${BORDER_COLOR}`,
+          borderRadius: "6px",
+          background: "white",
+        }}
+      >
+        <div
+          style={{
+            padding: "12px",
+            cursor: "pointer",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+          onClick={() => toggleNodeExpand(node.id)}
+        >
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "1.2em" }}>{isExpanded ? "▼" : "▶"}</span>
+              {node.emoji && <span>{node.emoji}</span>}
+              <span style={{ fontWeight: 600, color: TEXT_COLOR }}>
+                {node.type === "lesson" ? "📚 Lesson" : "📝 Quiz"}: {node.title}
+              </span>
+              <span
+                style={{
+                  ...styles.badge,
+                  background: node.type === "lesson" ? "#3b82f6" : "#8b5cf6",
+                  color: "white",
+                }}
+              >
+                {node.points} pts
+              </span>
+            </div>
+            {node.subtitle && (
+              <div
+                style={{
+                  fontSize: "0.85em",
+                  color: MUTED_COLOR,
+                  marginTop: "4px",
+                  marginLeft: "28px",
+                }}
+              >
+                {node.subtitle}
+              </div>
+            )}
+            {node.description && (
+              <div
+                style={{
+                  fontSize: "0.9em",
+                  color: MUTED_COLOR,
+                  marginTop: "4px",
+                  marginLeft: "28px",
+                }}
+              >
+                {node.description}
+              </div>
+            )}
+            {node.estimatedMinutes && (
+              <div
+                style={{
+                  fontSize: "0.85em",
+                  color: MUTED_COLOR,
+                  marginTop: "4px",
+                  marginLeft: "28px",
+                }}
+              >
+                ⏱️ {node.estimatedMinutes} minutes
+              </div>
+            )}
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div
+            style={{
+              padding: "15px",
+              borderTop: `1px solid ${BORDER_COLOR}`,
+              background: HOVER_COLOR,
+            }}
+          >
+            {node.type === "lesson" && node.contentBlocks && (
+              <div>
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: TEXT_COLOR,
+                    marginBottom: "10px",
+                  }}
+                >
+                  Lesson Content:
+                </div>
+                {node.contentBlocks.map((block) => renderContentBlock(block))}
+              </div>
+            )}
+
+            {node.type === "quiz" && node.questions && (
+              <div>
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: TEXT_COLOR,
+                    marginBottom: "10px",
+                  }}
+                >
+                  Quiz Questions ({node.questions.length}):
+                </div>
+                {node.questions.map((question, idx) =>
+                  renderQuizQuestion(question, idx)
+                )}
+              </div>
+            )}
+
+            {node.type === "quiz" && (!node.questions || node.questions.length === 0) && (
+              <div style={{ color: MUTED_COLOR, fontSize: "0.9em" }}>
+                No questions available
+              </div>
+            )}
+
+            {node.type === "lesson" && (!node.contentBlocks || node.contentBlocks.length === 0) && (
+              <div style={{ color: MUTED_COLOR, fontSize: "0.9em" }}>
+                No content blocks available
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderDetailsView = () => {
     if (!selectedTemplate) return null;
 
@@ -1038,62 +1400,121 @@ const CourseTemplatePanel: React.FC = () => {
                       marginTop: "10px",
                     }}
                   >
-                    {selectedTemplate.roadmap.levels.map((level, index) => (
-                      <div
-                        key={level.id}
-                        style={{
-                          padding: "10px",
-                          border: `1px solid ${BORDER_COLOR}`,
-                          borderRadius: "6px",
-                          background: HOVER_COLOR,
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: TEXT_COLOR }}>
-                              Level {index + 1}: {level.title}
-                            </div>
-                            {level.description && (
+                    {selectedTemplate.roadmap.levels.map((level, index) => {
+                      const isExpanded = expandedLevels.has(level.id);
+                      const hasNodes = level.nodes && level.nodes.length > 0;
+
+                      return (
+                        <div
+                          key={level.id}
+                          style={{
+                            border: `1px solid ${BORDER_COLOR}`,
+                            borderRadius: "6px",
+                            background: HOVER_COLOR,
+                          }}
+                        >
+                          <div
+                            style={{
+                              padding: "10px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
                               <div
                                 style={{
-                                  fontSize: "0.9em",
-                                  color: MUTED_COLOR,
-                                  marginTop: "4px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "8px",
+                                  cursor: hasNodes ? "pointer" : "default",
+                                }}
+                                onClick={() => hasNodes && toggleLevelExpand(level.id)}
+                              >
+                                {hasNodes && (
+                                  <span style={{ fontSize: "1em" }}>
+                                    {isExpanded ? "▼" : "▶"}
+                                  </span>
+                                )}
+                                <div style={{ fontWeight: 600, color: TEXT_COLOR }}>
+                                  Level {index + 1}: {level.title}
+                                </div>
+                                {hasNodes && (
+                                  <span
+                                    style={{
+                                      ...styles.badge,
+                                      background: PRIMARY_COLOR,
+                                      color: "white",
+                                    }}
+                                  >
+                                    {level.nodes!.length} nodes
+                                  </span>
+                                )}
+                              </div>
+                              {level.description && (
+                                <div
+                                  style={{
+                                    fontSize: "0.9em",
+                                    color: MUTED_COLOR,
+                                    marginTop: "4px",
+                                  }}
+                                >
+                                  {level.description}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
+                              <button
+                                onClick={() => openRegenerateModal(level)}
+                                disabled={processingLevel}
+                                style={{
+                                  ...getButtonStyle(PRIMARY_COLOR, "white", true),
+                                  opacity: processingLevel ? 0.6 : 1,
+                                  cursor: processingLevel ? "not-allowed" : "pointer",
+                                }}
+                                title="Regenerate this level"
+                              >
+                                Regenerate
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLevel(level.id)}
+                                disabled={processingLevel}
+                                style={{
+                                  ...getButtonStyle(DANGER_COLOR, "white", true),
+                                  opacity: processingLevel ? 0.6 : 1,
+                                  cursor: processingLevel ? "not-allowed" : "pointer",
+                                }}
+                                title="Delete this level"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && hasNodes && (
+                            <div
+                              style={{
+                                padding: "10px",
+                                borderTop: `1px solid ${BORDER_COLOR}`,
+                                background: "white",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontWeight: 600,
+                                  color: TEXT_COLOR,
+                                  marginBottom: "10px",
+                                  fontSize: "0.95em",
                                 }}
                               >
-                                {level.description}
+                                Nodes in this level:
                               </div>
-                            )}
-                          </div>
-                          <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
-                            <button
-                              onClick={() => openRegenerateModal(level)}
-                              disabled={processingLevel}
-                              style={{
-                                ...getButtonStyle(PRIMARY_COLOR, "white", true),
-                                opacity: processingLevel ? 0.6 : 1,
-                                cursor: processingLevel ? "not-allowed" : "pointer",
-                              }}
-                              title="Regenerate this level"
-                            >
-                              Regenerate
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLevel(level.id)}
-                              disabled={processingLevel}
-                              style={{
-                                ...getButtonStyle(DANGER_COLOR, "white", true),
-                                opacity: processingLevel ? 0.6 : 1,
-                                cursor: processingLevel ? "not-allowed" : "pointer",
-                              }}
-                              title="Delete this level"
-                            >
-                              Delete
-                            </button>
-                          </div>
+                              {level.nodes!.map((node) => renderNodeContent(node))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
