@@ -658,6 +658,41 @@ const CourseTemplatePanel: React.FC = () => {
     }
   };
 
+  const handleGenerateFullLevel = async (levelId: string) => {
+    if (!selectedTemplate) return;
+
+    setProcessingLevel(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/course-templates/${selectedTemplate.id}/levels/${levelId}/generate-full`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to generate first node: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("First node generated successfully!", "success");
+      
+      // Refresh the template details to show updated levels
+      await handleViewDetails(selectedTemplate.id);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("API Error:", error);
+      showNotification(`Error: ${errorMessage}`, "error");
+    } finally {
+      setProcessingLevel(false);
+    }
+  };
+
   const handleDeleteLevel = async (levelId: string) => {
     if (!selectedTemplate) return;
 
@@ -1562,6 +1597,18 @@ const CourseTemplatePanel: React.FC = () => {
                               )}
                             </div>
                             <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
+                              <button
+                                onClick={() => handleGenerateFullLevel(level.id)}
+                                disabled={processingLevel}
+                                style={{
+                                  ...getButtonStyle(SUCCESS_COLOR, "white", true),
+                                  opacity: processingLevel ? 0.6 : 1,
+                                  cursor: processingLevel ? "not-allowed" : "pointer",
+                                }}
+                                title="Generate first node for this level"
+                              >
+                                Generate First Node
+                              </button>
                               <button
                                 onClick={() => openRegenerateModal(level)}
                                 disabled={processingLevel}

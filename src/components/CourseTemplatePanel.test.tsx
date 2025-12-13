@@ -716,6 +716,126 @@ describe('CourseTemplatePanel', () => {
     });
   });
 
+  test('successfully generates first node for a level', async () => {
+    let generateCalled = false;
+    
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/levels/level1/generate-full') && options?.method === 'POST') {
+        generateCalled = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'level1',
+            title: 'Introduction',
+            description: 'Updated level with first node',
+            order: 1,
+            nodes: [
+              {
+                id: 'node1',
+                type: 'lesson',
+                title: 'Generated Lesson',
+                points: 10,
+                order: 1,
+              },
+            ],
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                { id: 'level1', title: 'Introduction', description: 'Level description', order: 1 },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction')).toBeInTheDocument();
+    });
+
+    const generateButtons = screen.getAllByText('Generate First Node');
+    fireEvent.click(generateButtons[0]);
+
+    await waitFor(() => {
+      expect(generateCalled).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('First node generated successfully!')).toBeInTheDocument();
+    });
+  });
+
   test('displays nodes when level is expanded', async () => {
     (global.fetch as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/api/exams')) {
