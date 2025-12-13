@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { APIHOST } from "../utils/url";
+import LoadingOverlay from "./LoadingOverlay";
 
 // API_BASE is only used for Admin CRUD endpoints (/api/admin/...)
 const API_BASE = `${APIHOST}/api/admin`;
@@ -294,6 +295,7 @@ const CourseTemplatePanel: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] =
     useState<CourseTemplateWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [creatingCourse, setCreatingCourse] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error";
@@ -414,6 +416,7 @@ const CourseTemplatePanel: React.FC = () => {
       return;
     }
 
+    setCreatingCourse(true);
     try {
       const response = await fetch(`${API_BASE}/course-templates`, {
         method: "POST",
@@ -436,6 +439,8 @@ const CourseTemplatePanel: React.FC = () => {
     } catch (error: any) {
       console.error("API Error:", error);
       showNotification(`Error: ${error.message}`, "error");
+    } finally {
+      setCreatingCourse(false);
     }
   };
 
@@ -972,6 +977,7 @@ const CourseTemplatePanel: React.FC = () => {
 
   return (
     <div style={styles.panel}>
+      {creatingCourse && <LoadingOverlay message="Creating course template..." />}
       {message && (
         <div style={getNotificationStyle(message.type)}>{message.text}</div>
       )}

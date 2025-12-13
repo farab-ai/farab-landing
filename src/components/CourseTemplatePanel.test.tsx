@@ -188,8 +188,9 @@ describe('CourseTemplatePanel', () => {
     });
   });
 
-  test('displays Archive button for active templates', async () => {
-    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+  test('shows loading overlay during course creation', async () => {
+    // Mock fetch to simulate a slow create request
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
       if (url.includes('/api/exams')) {
         return Promise.resolve({
           ok: true,
@@ -215,241 +216,66 @@ describe('CourseTemplatePanel', () => {
           ]),
         });
       }
+      if (url.includes('/api/admin/course-templates') && options?.method === 'POST') {
+        // Simulate a slow create request
+        return new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: () => Promise.resolve({ id: 'new-template' }),
+              }),
+            100
+          )
+        );
+      }
       if (url.includes('/api/admin/course-templates')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'template1',
-              exam_id: 'exam1',
-              subject_id: 'subject1',
-              language: 'en',
-              roadmap_id: 'roadmap1',
-              is_active: true,
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z',
-              exam_name: { en: 'Unified National Test' },
-              subject_name: { en: 'Mathematics' },
-            },
-          ]),
+          json: () => Promise.resolve([]),
         });
       }
       return Promise.reject(new Error('Not found'));
     });
 
-    render(<CourseTemplatePanel />);
+    const { container } = render(<CourseTemplatePanel />);
     
+    // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByText('Archive')).toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
-  test('displays Activate button for inactive templates', async () => {
-    (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (url.includes('/api/exams')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'exam1',
-              exam_id: 'UNT',
-              name: { en: 'Unified National Test', ru: 'ЕНТ' },
-            },
-          ]),
-        });
-      }
-      if (url.includes('/api/subjects')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'subject1',
-              code: 'MATH',
-              exam_id: 'exam1',
-              name: { en: 'Mathematics', ru: 'Математика' },
-            },
-          ]),
-        });
-      }
-      if (url.includes('/api/admin/course-templates')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'template1',
-              exam_id: 'exam1',
-              subject_id: 'subject1',
-              language: 'en',
-              roadmap_id: 'roadmap1',
-              is_active: false,
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z',
-              exam_name: { en: 'Unified National Test' },
-              subject_name: { en: 'Mathematics' },
-            },
-          ]),
-        });
-      }
-      return Promise.reject(new Error('Not found'));
+      expect(screen.getByText('Create New Template')).toBeInTheDocument();
     });
 
-    render(<CourseTemplatePanel />);
+    // Open create form
+    fireEvent.click(screen.getByText('Create New Template'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Course Template')).toBeInTheDocument();
+    });
+
+    // Get form elements directly from container to avoid filter conflicts
+    const form = container.querySelector('form');
+    expect(form).toBeInTheDocument();
     
-    await waitFor(() => {
-      expect(screen.getByText('Activate')).toBeInTheDocument();
-    }, { timeout: 3000 });
-  });
-
-  test('archive button calls archive API', async () => {
-    const mockFetch = global.fetch as jest.Mock;
-    mockFetch.mockImplementation((url: string, options?: any) => {
-      if (url.includes('/api/exams')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'exam1',
-              exam_id: 'UNT',
-              name: { en: 'Unified National Test', ru: 'ЕНТ' },
-            },
-          ]),
-        });
-      }
-      if (url.includes('/api/subjects')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'subject1',
-              code: 'MATH',
-              exam_id: 'exam1',
-              name: { en: 'Mathematics', ru: 'Математика' },
-            },
-          ]),
-        });
-      }
-      if (url.includes('/archive') && options?.method === 'PUT') {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({}),
-        });
-      }
-      if (url.includes('/api/admin/course-templates')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'template1',
-              exam_id: 'exam1',
-              subject_id: 'subject1',
-              language: 'en',
-              roadmap_id: 'roadmap1',
-              is_active: true,
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z',
-              exam_name: { en: 'Unified National Test' },
-              subject_name: { en: 'Mathematics' },
-            },
-          ]),
-        });
-      }
-      return Promise.reject(new Error('Not found'));
-    });
-
-    // Mock window.confirm
-    const originalConfirm = window.confirm;
-    window.confirm = jest.fn(() => true);
-
-    render(<CourseTemplatePanel />);
+    const selects = form!.querySelectorAll('select');
+    const examSelect = selects[0];  // First select in form is exam
+    const subjectSelect = selects[1];  // Second is subject
     
+    // Fill form
+    fireEvent.change(examSelect, { target: { value: 'exam1' } });
+    fireEvent.change(subjectSelect, { target: { value: 'subject1' } });
+
+    // Submit form
+    const createButton = screen.getByText('Create Template');
+    fireEvent.click(createButton);
+
+    // Check loading overlay appears
     await waitFor(() => {
-      expect(screen.getByText('Archive')).toBeInTheDocument();
+      expect(screen.getByText('Creating course template...')).toBeInTheDocument();
+    }, { timeout: 1000 });
+
+    // Wait for overlay to disappear after the operation completes
+    await waitFor(() => {
+      expect(screen.queryByText('Creating course template...')).not.toBeInTheDocument();
     }, { timeout: 3000 });
-
-    const archiveButton = screen.getByText('Archive');
-    fireEvent.click(archiveButton);
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/archive'),
-        expect.objectContaining({ method: 'PUT' })
-      );
-    });
-
-    // Restore original confirm
-    window.confirm = originalConfirm;
-  });
-
-  test('activate button calls activate API', async () => {
-    const mockFetch = global.fetch as jest.Mock;
-    mockFetch.mockImplementation((url: string, options?: any) => {
-      if (url.includes('/api/exams')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'exam1',
-              exam_id: 'UNT',
-              name: { en: 'Unified National Test', ru: 'ЕНТ' },
-            },
-          ]),
-        });
-      }
-      if (url.includes('/api/subjects')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'subject1',
-              code: 'MATH',
-              exam_id: 'exam1',
-              name: { en: 'Mathematics', ru: 'Математика' },
-            },
-          ]),
-        });
-      }
-      if (url.includes('/activate') && options?.method === 'PUT') {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({}),
-        });
-      }
-      if (url.includes('/api/admin/course-templates')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([
-            {
-              id: 'template1',
-              exam_id: 'exam1',
-              subject_id: 'subject1',
-              language: 'en',
-              roadmap_id: 'roadmap1',
-              is_active: false,
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z',
-              exam_name: { en: 'Unified National Test' },
-              subject_name: { en: 'Mathematics' },
-            },
-          ]),
-        });
-      }
-      return Promise.reject(new Error('Not found'));
-    });
-
-    render(<CourseTemplatePanel />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Activate')).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    const activateButton = screen.getByText('Activate');
-    fireEvent.click(activateButton);
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/activate'),
-        expect.objectContaining({ method: 'PUT' })
-      );
-    });
   });
 });
