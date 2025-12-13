@@ -652,11 +652,11 @@ const CourseTemplatePanel: React.FC = () => {
           .json()
           .catch(() => ({ message: "Unknown error" }));
         throw new Error(
-          `Failed to generate nodes: ${errorBody.message || response.statusText}`
+          `Failed to generate first node: ${errorBody.message || response.statusText}`
         );
       }
 
-      showNotification("Nodes generated successfully!", "success");
+      showNotification("First node generated successfully!", "success");
       
       // Refresh the template details to show updated levels
       await handleViewDetails(selectedTemplate.id);
@@ -1557,9 +1557,9 @@ const CourseTemplatePanel: React.FC = () => {
                                   opacity: processingLevel ? 0.6 : 1,
                                   cursor: processingLevel ? "not-allowed" : "pointer",
                                 }}
-                                title="Generate all nodes for this level"
+                                title="Generate first node for this level"
                               >
-                                Generate Nodes
+                                Generate First Node
                               </button>
                               <button
                                 onClick={() => openRegenerateModal(level)}

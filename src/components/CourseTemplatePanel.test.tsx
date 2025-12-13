@@ -716,7 +716,7 @@ describe('CourseTemplatePanel', () => {
     });
   });
 
-  test('successfully generates nodes for a level', async () => {
+  test('successfully generates first node for a level', async () => {
     let generateCalled = false;
     
     (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
@@ -752,7 +752,7 @@ describe('CourseTemplatePanel', () => {
           json: () => Promise.resolve({
             id: 'level1',
             title: 'Introduction',
-            description: 'Updated level with nodes',
+            description: 'Updated level with first node',
             order: 1,
             nodes: [
               {
@@ -761,13 +761,6 @@ describe('CourseTemplatePanel', () => {
                 title: 'Generated Lesson',
                 points: 10,
                 order: 1,
-              },
-              {
-                id: 'node2',
-                type: 'quiz',
-                title: 'Generated Quiz',
-                points: 20,
-                order: 2,
               },
             ],
           }),
@@ -831,7 +824,7 @@ describe('CourseTemplatePanel', () => {
       expect(screen.getByText('Level 1: Introduction')).toBeInTheDocument();
     });
 
-    const generateButtons = screen.getAllByText('Generate Nodes');
+    const generateButtons = screen.getAllByText('Generate First Node');
     fireEvent.click(generateButtons[0]);
 
     await waitFor(() => {
@@ -839,7 +832,7 @@ describe('CourseTemplatePanel', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Nodes generated successfully!')).toBeInTheDocument();
+      expect(screen.getByText('First node generated successfully!')).toBeInTheDocument();
     });
   });
 
