@@ -1287,4 +1287,162 @@ describe('CourseTemplatePanel', () => {
       expect.objectContaining({ displayMode: false })
     );
   });
+
+  test('displays equation-only options when text is empty', async () => {
+    // Mock window.katex for equation rendering
+    (window as any).katex = {
+      render: jest.fn((latex: string, element: HTMLElement) => {
+        element.innerHTML = `<span class="katex-rendered">${latex}</span>`;
+      }),
+    };
+
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Fractions',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'quiz',
+                      title: 'Fraction Quiz',
+                      points: 30,
+                      order: 1,
+                      questions: [
+                        {
+                          id: 'q1',
+                          type: 'singleChoice',
+                          question: 'Which fraction is correct?',
+                          options: [
+                            {
+                              id: 'opt1',
+                              text: '',
+                              equation: '\\frac{3}{2}',
+                              isCorrect: false,
+                            },
+                            {
+                              id: 'opt2',
+                              text: '',
+                              equation: '\\frac{1}{4}',
+                              isCorrect: true,
+                            },
+                          ],
+                          points: 10,
+                          explanation: 'The correct answer is one quarter.',
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Fractions')).toBeInTheDocument();
+    });
+
+    // Expand the level
+    fireEvent.click(screen.getByText('Level 1: Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📝 Quiz: Fraction Quiz/)).toBeInTheDocument();
+    });
+
+    // Click to expand the quiz node
+    const quizNode = screen.getByText(/📝 Quiz: Fraction Quiz/);
+    fireEvent.click(quizNode);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quiz Questions (1):')).toBeInTheDocument();
+      expect(screen.getByText('Which fraction is correct?')).toBeInTheDocument();
+    });
+
+    // Verify that katex.render was called with both option equations
+    expect((window as any).katex.render).toHaveBeenCalledWith(
+      '\\frac{3}{2}',
+      expect.any(HTMLElement),
+      expect.objectContaining({ displayMode: false })
+    );
+
+    expect((window as any).katex.render).toHaveBeenCalledWith(
+      '\\frac{1}{4}',
+      expect.any(HTMLElement),
+      expect.objectContaining({ displayMode: false })
+    );
+  });
 });

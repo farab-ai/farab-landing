@@ -1204,15 +1204,21 @@ const CourseTemplatePanel: React.FC = () => {
                   marginBottom: "8px",
                 }}
               >
-                <div>
-                  {opt.isCorrect ? "✓ " : "○ "}
-                  <TextWithLatex content={opt.text} style={{ display: "inline" }} />
-                </div>
-                {opt.equation && (
-                  <div style={{ marginLeft: "20px", marginTop: "4px" }}>
+                {opt.isCorrect ? "✓ " : "○ "}
+                {opt.text && opt.text.trim() ? (
+                  <>
+                    <TextWithLatex content={opt.text} style={{ display: "inline" }} />
+                    {opt.equation && (
+                      <div style={{ marginLeft: "20px", marginTop: "4px" }}>
+                        <EquationRenderer equation={opt.equation} displayMode={false} />
+                      </div>
+                    )}
+                  </>
+                ) : opt.equation ? (
+                  <div style={{ display: "inline-block", marginLeft: "5px" }}>
                     <EquationRenderer equation={opt.equation} displayMode={false} />
                   </div>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
