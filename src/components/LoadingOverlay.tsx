@@ -23,7 +23,6 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
 
   const containerStyle: React.CSSProperties = {
     textAlign: "center",
-    color: "white",
   };
 
   const messageStyle: React.CSSProperties = {
