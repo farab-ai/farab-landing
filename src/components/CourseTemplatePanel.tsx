@@ -339,6 +339,28 @@ const LANGUAGES = [
   { code: "zh", name: "Chinese" },
 ];
 
+// --- Custom hook for equation rendering ---
+const useEquationRenderer = (equation: string | undefined, displayMode: boolean = true) => {
+  const equationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (equationRef.current && window.katex && equation) {
+      try {
+        window.katex.render(equation, equationRef.current, {
+          throwOnError: false,
+          displayMode: displayMode,
+        });
+      } catch (e) {
+        if (equationRef.current) {
+          equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${equation}</span>`;
+        }
+      }
+    }
+  }, [equation, displayMode]);
+
+  return equationRef;
+};
+
 const CourseTemplatePanel: React.FC = () => {
   const [courseTemplates, setCourseTemplates] = useState<
     CourseTemplateWithDetails[]
@@ -1006,28 +1028,6 @@ const CourseTemplatePanel: React.FC = () => {
         </div>
       </div>
     );
-  };
-
-  // --- Custom hook for equation rendering ---
-  const useEquationRenderer = (equation: string | undefined, displayMode: boolean = true) => {
-    const equationRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      if (equationRef.current && window.katex && equation) {
-        try {
-          window.katex.render(equation, equationRef.current, {
-            throwOnError: false,
-            displayMode: displayMode,
-          });
-        } catch (e) {
-          if (equationRef.current) {
-            equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${equation}</span>`;
-          }
-        }
-      }
-    }, [equation, displayMode]);
-
-    return equationRef;
   };
 
   // --- Text with LaTeX Component ---
