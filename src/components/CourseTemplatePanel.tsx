@@ -89,6 +89,11 @@ interface CreateCourseTemplateRequest {
   language: string;
 }
 
+// Regenerate level request
+interface RegenerateLevelRequest {
+  prompt?: string;
+}
+
 // Filter form data
 interface FilterFormData {
   exam_id: string;
@@ -480,7 +485,7 @@ const CourseTemplatePanel: React.FC = () => {
 
     setProcessingLevel(true);
     try {
-      const body: any = {};
+      const body: RegenerateLevelRequest = {};
       if (regeneratePrompt.trim()) {
         body.prompt = regeneratePrompt.trim();
       }
@@ -510,9 +515,10 @@ const CourseTemplatePanel: React.FC = () => {
       
       // Refresh the template details to show updated levels
       await handleViewDetails(selectedTemplate.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("API Error:", error);
-      showNotification(`Error: ${error.message}`, "error");
+      showNotification(`Error: ${errorMessage}`, "error");
     } finally {
       setProcessingLevel(false);
     }
@@ -547,9 +553,10 @@ const CourseTemplatePanel: React.FC = () => {
       
       // Refresh the template details to show updated levels
       await handleViewDetails(selectedTemplate.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error("API Error:", error);
-      showNotification(`Error: ${error.message}`, "error");
+      showNotification(`Error: ${errorMessage}`, "error");
     } finally {
       setProcessingLevel(false);
     }
