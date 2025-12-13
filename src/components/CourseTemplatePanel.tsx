@@ -1038,7 +1038,9 @@ const CourseTemplatePanel: React.FC = () => {
     const equationRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      if (block.type === "equation" && equationRef.current && window.katex && block.content) {
+      if (block.type !== "equation") return;
+      
+      if (equationRef.current && window.katex && block.content) {
         try {
           window.katex.render(block.content, equationRef.current, {
             throwOnError: false,
@@ -1092,7 +1094,7 @@ const CourseTemplatePanel: React.FC = () => {
               textAlign: "center",
             }}
           >
-            <div ref={equationRef}>{block.content}</div>
+            <div ref={equationRef} />
           </div>
         );
       case "bulletList":
