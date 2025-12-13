@@ -1008,6 +1008,28 @@ const CourseTemplatePanel: React.FC = () => {
     );
   };
 
+  // --- Custom hook for equation rendering ---
+  const useEquationRenderer = (equation: string | undefined, displayMode: boolean = true) => {
+    const equationRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (equationRef.current && window.katex && equation) {
+        try {
+          window.katex.render(equation, equationRef.current, {
+            throwOnError: false,
+            displayMode: displayMode,
+          });
+        } catch (e) {
+          if (equationRef.current) {
+            equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${equation}</span>`;
+          }
+        }
+      }
+    }, [equation, displayMode]);
+
+    return equationRef;
+  };
+
   // --- Text with LaTeX Component ---
   const TextWithLatex: React.FC<{ content: string; style?: React.CSSProperties }> = ({ content, style }) => {
     const textRef = useRef<HTMLDivElement>(null);
@@ -1037,24 +1059,10 @@ const CourseTemplatePanel: React.FC = () => {
 
   // --- Render Content Block Component ---
   const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
-    const equationRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      if (block.type !== "equation") return;
-      
-      if (equationRef.current && window.katex && block.content) {
-        try {
-          window.katex.render(block.content, equationRef.current, {
-            throwOnError: false,
-            displayMode: true,
-          });
-        } catch (e) {
-          if (equationRef.current) {
-            equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${block.content}</span>`;
-          }
-        }
-      }
-    }, [block.content, block.type]);
+    const equationRef = useEquationRenderer(
+      block.type === "equation" ? block.content : undefined,
+      true
+    );
 
     switch (block.type) {
       case "heading":
@@ -1133,22 +1141,7 @@ const CourseTemplatePanel: React.FC = () => {
 
   // --- Equation Renderer Component ---
   const EquationRenderer: React.FC<{ equation: string; displayMode?: boolean }> = ({ equation, displayMode = true }) => {
-    const equationRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      if (equationRef.current && window.katex && equation) {
-        try {
-          window.katex.render(equation, equationRef.current, {
-            throwOnError: false,
-            displayMode: displayMode,
-          });
-        } catch (e) {
-          if (equationRef.current) {
-            equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${equation}</span>`;
-          }
-        }
-      }
-    }, [equation, displayMode]);
+    const equationRef = useEquationRenderer(equation, displayMode);
 
     return (
       <div
