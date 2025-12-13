@@ -456,6 +456,60 @@ const CourseTemplatePanel: React.FC = () => {
     }
   };
 
+  // --- Archive Handler ---
+  const handleArchive = async (id: string) => {
+    if (!window.confirm("Are you sure you want to archive this course template?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/course-templates/${id}/archive`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to archive course template: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("Course template archived successfully!", "success");
+      await loadCourseTemplates();
+    } catch (error: any) {
+      console.error("Archive Error:", error);
+      showNotification(`Error: ${error.message}`, "error");
+    }
+  };
+
+  // --- Activate Handler ---
+  const handleActivate = async (id: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/course-templates/${id}/activate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to activate course template: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("Course template activated successfully!", "success");
+      await loadCourseTemplates();
+    } catch (error: any) {
+      console.error("Activate Error:", error);
+      showNotification(`Error: ${error.message}`, "error");
+    }
+  };
+
   const hideForm = () => {
     setShowForm(false);
     setFormData(initialFormData);
@@ -891,6 +945,21 @@ const CourseTemplatePanel: React.FC = () => {
                     >
                       View Details
                     </button>
+                    {template.is_active ? (
+                      <button
+                        onClick={() => handleArchive(template.id)}
+                        style={getButtonStyle(DANGER_COLOR, "white", true)}
+                      >
+                        Archive
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleActivate(template.id)}
+                        style={getButtonStyle(SUCCESS_COLOR, "white", true)}
+                      >
+                        Activate
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
