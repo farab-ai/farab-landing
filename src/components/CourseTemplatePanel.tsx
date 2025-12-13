@@ -108,6 +108,7 @@ interface QuizQuestion {
   id: string;
   type: 'singleChoice' | 'trueFalse' | 'fillInBlank';
   question: string;
+  equation?: string;
   options: QuizOption[];
   points: number;
   explanation: string;
@@ -118,6 +119,7 @@ interface QuizQuestion {
 interface QuizOption {
   id: string;
   text: string;
+  equation?: string;
   isCorrect: boolean;
 }
 
@@ -1129,6 +1131,43 @@ const CourseTemplatePanel: React.FC = () => {
     }
   };
 
+  // --- Equation Renderer Component ---
+  const EquationRenderer: React.FC<{ equation: string; displayMode?: boolean }> = ({ equation, displayMode = true }) => {
+    const equationRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (equationRef.current && window.katex && equation) {
+        try {
+          window.katex.render(equation, equationRef.current, {
+            throwOnError: false,
+            displayMode: displayMode,
+          });
+        } catch (e) {
+          if (equationRef.current) {
+            equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${equation}</span>`;
+          }
+        }
+      }
+    }, [equation, displayMode]);
+
+    return (
+      <div
+        ref={equationRef}
+        style={{
+          minHeight: displayMode ? "40px" : "20px",
+          padding: displayMode ? "10px" : "5px",
+          margin: displayMode ? "10px 0" : "5px 0",
+          background: HOVER_COLOR,
+          border: `1px solid ${BORDER_COLOR}`,
+          borderRadius: "4px",
+          textAlign: displayMode ? "center" : "left",
+          display: "inline-block",
+          width: displayMode ? "100%" : "auto",
+        }}
+      />
+    );
+  };
+
   // --- Render Quiz Question ---
   const renderQuizQuestion = (question: QuizQuestion, index: number) => {
     return (
@@ -1158,6 +1197,9 @@ const CourseTemplatePanel: React.FC = () => {
             marginBottom: "8px",
           }}
         />
+        {question.equation && (
+          <EquationRenderer equation={question.equation} displayMode={true} />
+        )}
         {question.options && question.options.length > 0 && (
           <div style={{ marginLeft: "15px", marginBottom: "8px" }}>
             {question.options.map((opt) => (
@@ -1166,11 +1208,18 @@ const CourseTemplatePanel: React.FC = () => {
                 style={{
                   fontSize: "0.9em",
                   color: TEXT_COLOR,
-                  marginBottom: "4px",
+                  marginBottom: "8px",
                 }}
               >
-                {opt.isCorrect ? "✓ " : "○ "}
-                <TextWithLatex content={opt.text} style={{ display: "inline" }} />
+                <div>
+                  {opt.isCorrect ? "✓ " : "○ "}
+                  <TextWithLatex content={opt.text} style={{ display: "inline" }} />
+                </div>
+                {opt.equation && (
+                  <div style={{ marginLeft: "20px", marginTop: "4px" }}>
+                    <EquationRenderer equation={opt.equation} displayMode={false} />
+                  </div>
+                )}
               </div>
             ))}
           </div>
