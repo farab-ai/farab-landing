@@ -1122,8 +1122,9 @@ describe('CourseTemplatePanel', () => {
       expect(screen.getByText('Quiz Questions (1):')).toBeInTheDocument();
       expect(screen.getByText(/Question 1/)).toBeInTheDocument();
       expect(screen.getByText('What does the denominator represent?')).toBeInTheDocument();
-      expect(screen.getByText(/✓ Total parts/)).toBeInTheDocument();
-      expect(screen.getByText(/○ Parts taken/)).toBeInTheDocument();
+      // Check that option text appears in the document
+      expect(screen.getByText('Total parts')).toBeInTheDocument();
+      expect(screen.getByText('Parts taken')).toBeInTheDocument();
       expect(screen.getByText(/Explanation: The denominator shows total parts./)).toBeInTheDocument();
     });
   });

@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { APIHOST } from "../utils/url";
 import LoadingOverlay from "./LoadingOverlay";
 
 // API_BASE is only used for Admin CRUD endpoints (/api/admin/...)
 const API_BASE = `${APIHOST}/api/admin`;
+
+// Global KaTeX Check
+declare global {
+  interface Window {
+    katex?: {
+      render: (latex: string, element: HTMLElement, options?: any) => void;
+    };
+    renderMathInElement?: (element: HTMLElement, options?: any) => void;
+  }
+}
 
 // 🌍 Data Structures
 interface Translation {
@@ -996,13 +1006,56 @@ const CourseTemplatePanel: React.FC = () => {
     );
   };
 
-  // --- Render Content Block ---
-  const renderContentBlock = (block: ContentBlock) => {
+  // --- Text with LaTeX Component ---
+  const TextWithLatex: React.FC<{ content: string; style?: React.CSSProperties }> = ({ content, style }) => {
+    const textRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (textRef.current && window.renderMathInElement) {
+        try {
+          window.renderMathInElement(textRef.current, {
+            delimiters: [
+              { left: "\\(", right: "\\)", display: false },
+              { left: "\\[", right: "\\]", display: true },
+            ],
+            throwOnError: false,
+          });
+        } catch (e) {
+          console.error("Error rendering LaTeX:", e);
+        }
+      }
+    }, [content]);
+
+    return (
+      <div ref={textRef} style={style}>
+        {content}
+      </div>
+    );
+  };
+
+  // --- Render Content Block Component ---
+  const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
+    const equationRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      if (block.type === "equation" && equationRef.current && window.katex && block.content) {
+        try {
+          window.katex.render(block.content, equationRef.current, {
+            throwOnError: false,
+            displayMode: true,
+          });
+        } catch (e) {
+          if (equationRef.current) {
+            equationRef.current.innerHTML = `<span style="color: ${DANGER_COLOR}; font-size: 0.9em;">Invalid LaTeX: ${block.content}</span>`;
+          }
+        }
+      }
+    }, [block.content, block.type]);
+
     switch (block.type) {
       case "heading":
         return (
           <div
-            key={block.id}
             style={{
               fontSize: block.level === 2 ? "1.2em" : "1.1em",
               fontWeight: 600,
@@ -1016,39 +1069,35 @@ const CourseTemplatePanel: React.FC = () => {
         );
       case "text":
         return (
-          <div
-            key={block.id}
+          <TextWithLatex
+            content={block.content || ""}
             style={{
               fontSize: "0.95em",
               color: TEXT_COLOR,
               marginBottom: "10px",
               lineHeight: "1.6",
             }}
-          >
-            {block.content}
-          </div>
+          />
         );
       case "equation":
         return (
           <div
-            key={block.id}
             style={{
               fontSize: "1em",
               color: TEXT_COLOR,
               marginBottom: "10px",
-              fontFamily: "monospace",
               background: HOVER_COLOR,
               padding: "10px",
               borderRadius: "4px",
+              textAlign: "center",
             }}
           >
-            {block.content}
+            <div ref={equationRef}>{block.content}</div>
           </div>
         );
       case "bulletList":
         return (
           <ul
-            key={block.id}
             style={{
               fontSize: "0.95em",
               color: TEXT_COLOR,
@@ -1058,7 +1107,7 @@ const CourseTemplatePanel: React.FC = () => {
           >
             {block.items?.map((item, idx) => (
               <li key={idx} style={{ marginBottom: "5px" }}>
-                {item}
+                <TextWithLatex content={item} style={{ display: "inline" }} />
               </li>
             ))}
           </ul>
@@ -1066,7 +1115,6 @@ const CourseTemplatePanel: React.FC = () => {
       case "divider":
         return (
           <hr
-            key={block.id}
             style={{
               border: "none",
               borderTop: `1px solid ${BORDER_COLOR}`,
@@ -1100,15 +1148,14 @@ const CourseTemplatePanel: React.FC = () => {
         >
           Question {index + 1} ({question.type}, {question.points} points):
         </div>
-        <div
+        <TextWithLatex
+          content={question.question}
           style={{
             fontSize: "0.95em",
             color: TEXT_COLOR,
             marginBottom: "8px",
           }}
-        >
-          {question.question}
-        </div>
+        />
         {question.options && question.options.length > 0 && (
           <div style={{ marginLeft: "15px", marginBottom: "8px" }}>
             {question.options.map((opt) => (
@@ -1121,7 +1168,7 @@ const CourseTemplatePanel: React.FC = () => {
                 }}
               >
                 {opt.isCorrect ? "✓ " : "○ "}
-                {opt.text}
+                <TextWithLatex content={opt.text} style={{ display: "inline" }} />
               </div>
             ))}
           </div>
@@ -1134,18 +1181,17 @@ const CourseTemplatePanel: React.FC = () => {
               marginBottom: "4px",
             }}
           >
-            <strong>Correct Answer:</strong> {question.correctAnswer}
+            <strong>Correct Answer:</strong> <TextWithLatex content={question.correctAnswer} style={{ display: "inline" }} />
           </div>
         )}
-        <div
+        <TextWithLatex
+          content={`Explanation: ${question.explanation}`}
           style={{
             fontSize: "0.85em",
             color: MUTED_COLOR,
             fontStyle: "italic",
           }}
-        >
-          Explanation: {question.explanation}
-        </div>
+        />
       </div>
     );
   };
@@ -1249,7 +1295,9 @@ const CourseTemplatePanel: React.FC = () => {
                 >
                   Lesson Content:
                 </div>
-                {node.contentBlocks.map((block) => renderContentBlock(block))}
+                {node.contentBlocks.map((block) => (
+                  <ContentBlockRenderer key={block.id} block={block} />
+                ))}
               </div>
             )}
 
