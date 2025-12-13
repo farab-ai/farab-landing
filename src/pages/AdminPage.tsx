@@ -5,6 +5,7 @@ import ExamPanel from "../components/ExamPanel";
 import SubjectsPanel from "../components/SubjectsPanel";
 import TopicsPanel from "../components/TopicsPanel";
 import QuestionsPanel from "../components/QuestionsPanel";
+import CourseTemplatePanel from "../components/CourseTemplatePanel";
 // If CountryPanel.tsx is in the same directory: import CountryPanel from "./CountryPanel";
 
 // 📚 Data
@@ -14,6 +15,7 @@ const ITEMS: { key: string; label: string }[] = [
   { key: "subjects", label: "Предметы" },
   { key: "topics", label: "Темы" },
   { key: "onboarding-quizzes", label: "Диагностические тесты" },
+  { key: "course-templates", label: "Шаблоны курсов" },
 ];
 
 // 🎨 Professional & Simple Styles
@@ -190,6 +192,8 @@ const AdminPage: React.FC = () => {
         return <TopicsPanel />;
     } else if (selected === 'onboarding-quizzes') {
         return <QuestionsPanel />;
+    } else if (selected === 'course-templates') {
+        return <CourseTemplatePanel />;
     }
 
     // Default placeholder content for other sections
