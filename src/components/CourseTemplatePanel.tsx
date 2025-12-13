@@ -312,9 +312,6 @@ const CourseTemplatePanel: React.FC = () => {
       if (response.ok) {
         const data: ExamMinimal[] = await response.json();
         setExams(data);
-        if (data.length > 0 && !formData.exam_id) {
-          setFormData((prev) => ({ ...prev, exam_id: data[0].id }));
-        }
       }
     } catch (error: any) {
       console.error("Failed to load exams:", error);
@@ -327,9 +324,6 @@ const CourseTemplatePanel: React.FC = () => {
       if (response.ok) {
         const data: SubjectMinimal[] = await response.json();
         setSubjects(data);
-        if (data.length > 0 && !formData.subject_id) {
-          setFormData((prev) => ({ ...prev, subject_id: data[0].id }));
-        }
       }
     } catch (error: any) {
       console.error("Failed to load subjects:", error);
@@ -508,7 +502,7 @@ const CourseTemplatePanel: React.FC = () => {
         <>
           <div style={styles.filterGrid}>
             <div>
-              <label htmlFor="filter_exam_id" style={styles.label}>
+              <label htmlFor="exam_id" style={styles.label}>
                 Exam
               </label>
               <select
@@ -527,7 +521,7 @@ const CourseTemplatePanel: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="filter_subject_id" style={styles.label}>
+              <label htmlFor="subject_id" style={styles.label}>
                 Subject
               </label>
               <select
@@ -546,7 +540,7 @@ const CourseTemplatePanel: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="filter_language" style={styles.label}>
+              <label htmlFor="language" style={styles.label}>
                 Language
               </label>
               <select
@@ -565,7 +559,7 @@ const CourseTemplatePanel: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="filter_is_active" style={styles.label}>
+              <label htmlFor="is_active" style={styles.label}>
                 Status
               </label>
               <select
