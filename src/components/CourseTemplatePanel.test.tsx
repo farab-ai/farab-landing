@@ -1128,4 +1128,163 @@ describe('CourseTemplatePanel', () => {
       expect(screen.getByText(/Explanation: The denominator shows total parts./)).toBeInTheDocument();
     });
   });
+
+  test('displays equations in quiz questions when equation field is present', async () => {
+    // Mock window.katex for equation rendering
+    (window as any).katex = {
+      render: jest.fn((latex: string, element: HTMLElement) => {
+        element.innerHTML = `<span class="katex-rendered">${latex}</span>`;
+      }),
+    };
+
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Algebra Basics',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'quiz',
+                      title: 'Algebra Quiz',
+                      points: 30,
+                      order: 1,
+                      questions: [
+                        {
+                          id: 'q1',
+                          type: 'singleChoice',
+                          question: 'Solve for x:',
+                          equation: 'x^2 + 2x - 3 = 0',
+                          options: [
+                            {
+                              id: 'opt1',
+                              text: 'x = 1 or x = -3',
+                              isCorrect: true,
+                            },
+                            {
+                              id: 'opt2',
+                              text: 'Option with equation',
+                              equation: 'x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}',
+                              isCorrect: false,
+                            },
+                          ],
+                          points: 15,
+                          explanation: 'Use the quadratic formula.',
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Algebra Basics')).toBeInTheDocument();
+    });
+
+    // Expand the level
+    fireEvent.click(screen.getByText('Level 1: Algebra Basics'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📝 Quiz: Algebra Quiz/)).toBeInTheDocument();
+    });
+
+    // Click to expand the quiz node
+    const quizNode = screen.getByText(/📝 Quiz: Algebra Quiz/);
+    fireEvent.click(quizNode);
+
+    await waitFor(() => {
+      expect(screen.getByText('Quiz Questions (1):')).toBeInTheDocument();
+      expect(screen.getByText('Solve for x:')).toBeInTheDocument();
+    });
+
+    // Verify that katex.render was called with the question equation
+    expect((window as any).katex.render).toHaveBeenCalledWith(
+      'x^2 + 2x - 3 = 0',
+      expect.any(HTMLElement),
+      expect.objectContaining({ displayMode: true })
+    );
+
+    // Verify that katex.render was called with the option equation
+    expect((window as any).katex.render).toHaveBeenCalledWith(
+      'x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}',
+      expect.any(HTMLElement),
+      expect.objectContaining({ displayMode: false })
+    );
+  });
 });
