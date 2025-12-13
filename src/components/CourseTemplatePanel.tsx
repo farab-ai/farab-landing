@@ -34,19 +34,6 @@ interface SubjectName {
   zh?: string;
 }
 
-// CourseTemplate represents a reusable course template for specific exam/subject/language combinations
-interface CourseTemplate {
-  id: string;
-  exam_id: string;
-  subject_id: string;
-  language: string;
-  roadmap_id: string;
-  is_active: boolean;
-  archived_at?: string;
-  created_at: string;
-  updated_at: string;
-}
-
 // CourseTemplateWithDetails includes additional details like exam name, subject name, and roadmap
 interface CourseTemplateWithDetails {
   id: string;
@@ -136,14 +123,6 @@ const getButtonStyle = (
   background,
   color,
 });
-
-// Helper style for danger button
-const btnDanger: Style = {
-  background: DANGER_COLOR,
-  color: "white",
-  padding: "8px 16px",
-  fontSize: "0.9em",
-};
 
 // Helper function for notification message styles
 const getNotificationStyle = (type: "success" | "error"): Style => ({
@@ -391,8 +370,12 @@ const CourseTemplatePanel: React.FC = () => {
   };
 
   useEffect(() => {
-    loadDependencies();
-    loadCourseTemplates();
+    const initData = async () => {
+      await loadDependencies();
+      await loadCourseTemplates();
+    };
+    initData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- Form Handlers ---
