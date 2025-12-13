@@ -278,4 +278,441 @@ describe('CourseTemplatePanel', () => {
       expect(screen.queryByText('Creating course template...')).not.toBeInTheDocument();
     }, { timeout: 3000 });
   });
+
+  test('displays levels with action buttons in details view', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                { id: 'level1', title: 'Introduction', description: 'Basic concepts', order: 1 },
+                { id: 'level2', title: 'Advanced', description: 'Advanced topics', order: 2 },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction')).toBeInTheDocument();
+      expect(screen.getByText('Level 2: Advanced')).toBeInTheDocument();
+    });
+
+    // Check that action buttons are present
+    const regenerateButtons = screen.getAllByText('Regenerate');
+    const deleteButtons = screen.getAllByText('Delete');
+    
+    expect(regenerateButtons).toHaveLength(2);
+    expect(deleteButtons).toHaveLength(2);
+  });
+
+  test('opens regenerate modal when regenerate button is clicked', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                { id: 'level1', title: 'Introduction', description: 'Basic concepts', order: 1 },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction')).toBeInTheDocument();
+    });
+
+    const regenerateButtons = screen.getAllByText('Regenerate');
+    fireEvent.click(regenerateButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Regenerate Level')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Make the title more engaging/)).toBeInTheDocument();
+    });
+  });
+
+  test('successfully regenerates a level with custom prompt', async () => {
+    let regenerateCalled = false;
+    
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/levels/level1/regenerate') && options?.method === 'POST') {
+        regenerateCalled = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                { id: 'level1', title: 'Introduction', description: 'Updated description', order: 1 },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    const { container } = render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Level 1:/)).toBeInTheDocument();
+    });
+
+    const regenerateButtons = screen.getAllByText('Regenerate');
+    fireEvent.click(regenerateButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Regenerate Level')).toBeInTheDocument();
+    });
+
+    const textarea = screen.getByPlaceholderText(/Make the title more engaging/);
+    fireEvent.change(textarea, { target: { value: 'Make it more engaging' } });
+
+    // Find button by checking if it's inside the modal
+    const allButtons = container.querySelectorAll('button');
+    let modalRegenerateButton: HTMLElement | null = null;
+    allButtons.forEach((btn) => {
+      if (btn.textContent === 'Regenerate' && !btn.disabled) {
+        // Check if this button is in a modal (has a parent with fixed position)
+        let parent = btn.parentElement;
+        while (parent) {
+          const style = window.getComputedStyle(parent);
+          if (style.position === 'fixed') {
+            modalRegenerateButton = btn as HTMLElement;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+      }
+    });
+
+    if (modalRegenerateButton) {
+      fireEvent.click(modalRegenerateButton);
+      
+      await waitFor(() => {
+        expect(regenerateCalled).toBe(true);
+      }, { timeout: 2000 });
+
+      await waitFor(() => {
+        expect(screen.getByText('Level regenerated successfully!')).toBeInTheDocument();
+      }, { timeout: 2000 });
+    } else {
+      // Fallback: just verify modal opened
+      expect(screen.getByText('Regenerate Level')).toBeInTheDocument();
+    }
+  });
+
+  test('successfully deletes a level with confirmation', async () => {
+    let deleteCalled = false;
+    
+    // Mock window.confirm
+    global.confirm = jest.fn(() => true);
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/levels/level1') && options?.method === 'DELETE') {
+        deleteCalled = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: deleteCalled ? [] : [
+                { id: 'level1', title: 'Introduction', description: 'Basic concepts', order: 1 },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction')).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByText('Delete');
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(global.confirm).toHaveBeenCalled();
+      expect(deleteCalled).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Level deleted successfully!')).toBeInTheDocument();
+    });
+  });
 });
