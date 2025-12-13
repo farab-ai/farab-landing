@@ -187,4 +187,95 @@ describe('CourseTemplatePanel', () => {
       expect(screen.getByText('View Details')).toBeInTheDocument();
     });
   });
+
+  test('shows loading overlay during course creation', async () => {
+    // Mock fetch to simulate a slow create request
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates') && options?.method === 'POST') {
+        // Simulate a slow create request
+        return new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: () => Promise.resolve({ id: 'new-template' }),
+              }),
+            100
+          )
+        );
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    const { container } = render(<CourseTemplatePanel />);
+    
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.getByText('Create New Template')).toBeInTheDocument();
+    });
+
+    // Open create form
+    fireEvent.click(screen.getByText('Create New Template'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Course Template')).toBeInTheDocument();
+    });
+
+    // Get form elements directly from container to avoid filter conflicts
+    const form = container.querySelector('form');
+    expect(form).toBeInTheDocument();
+    
+    const selects = form!.querySelectorAll('select');
+    const examSelect = selects[0];  // First select in form is exam
+    const subjectSelect = selects[1];  // Second is subject
+    
+    // Fill form
+    fireEvent.change(examSelect, { target: { value: 'exam1' } });
+    fireEvent.change(subjectSelect, { target: { value: 'subject1' } });
+
+    // Submit form
+    const createButton = screen.getByText('Create Template');
+    fireEvent.click(createButton);
+
+    // Check loading overlay appears
+    await waitFor(() => {
+      expect(screen.getByText('Creating course template...')).toBeInTheDocument();
+    }, { timeout: 1000 });
+
+    // Wait for overlay to disappear after the operation completes
+    await waitFor(() => {
+      expect(screen.queryByText('Creating course template...')).not.toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
 });
