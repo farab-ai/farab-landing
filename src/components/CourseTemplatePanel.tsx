@@ -1447,7 +1447,7 @@ const CourseTemplatePanel: React.FC = () => {
                                       color: "white",
                                     }}
                                   >
-                                    {level.nodes!.length} nodes
+                                    {level.nodes?.length || 0} nodes
                                   </span>
                                 )}
                               </div>
@@ -1509,7 +1509,7 @@ const CourseTemplatePanel: React.FC = () => {
                               >
                                 Nodes in this level:
                               </div>
-                              {level.nodes!.map((node) => renderNodeContent(node))}
+                              {level.nodes?.map((node) => renderNodeContent(node))}
                             </div>
                           )}
                         </div>
