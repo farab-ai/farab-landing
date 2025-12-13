@@ -300,6 +300,10 @@ const CourseTemplatePanel: React.FC = () => {
     text: string;
     type: "success" | "error";
   } | null>(null);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
+  const [regeneratePrompt, setRegeneratePrompt] = useState("");
+  const [processingLevel, setProcessingLevel] = useState(false);
 
   const showNotification = (text: string, type: "success" | "error") => {
     setMessage({ text, type });
@@ -468,6 +472,99 @@ const CourseTemplatePanel: React.FC = () => {
 
   const hideDetails = () => {
     setSelectedTemplate(null);
+  };
+
+  // --- Level Management Handlers ---
+  const handleRegenerateLevel = async () => {
+    if (!selectedTemplate || !selectedLevel) return;
+
+    setProcessingLevel(true);
+    try {
+      const body: any = {};
+      if (regeneratePrompt.trim()) {
+        body.prompt = regeneratePrompt.trim();
+      }
+
+      const response = await fetch(
+        `${API_BASE}/course-templates/${selectedTemplate.id}/levels/${selectedLevel.id}/regenerate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to regenerate level: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("Level regenerated successfully!", "success");
+      setShowRegenerateModal(false);
+      setRegeneratePrompt("");
+      setSelectedLevel(null);
+      
+      // Refresh the template details to show updated levels
+      await handleViewDetails(selectedTemplate.id);
+    } catch (error: any) {
+      console.error("API Error:", error);
+      showNotification(`Error: ${error.message}`, "error");
+    } finally {
+      setProcessingLevel(false);
+    }
+  };
+
+  const handleDeleteLevel = async (levelId: string) => {
+    if (!selectedTemplate) return;
+
+    if (!window.confirm("Are you sure you want to delete this level? This action cannot be undone.")) {
+      return;
+    }
+
+    setProcessingLevel(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/course-templates/${selectedTemplate.id}/levels/${levelId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to delete level: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("Level deleted successfully!", "success");
+      
+      // Refresh the template details to show updated levels
+      await handleViewDetails(selectedTemplate.id);
+    } catch (error: any) {
+      console.error("API Error:", error);
+      showNotification(`Error: ${error.message}`, "error");
+    } finally {
+      setProcessingLevel(false);
+    }
+  };
+
+  const openRegenerateModal = (level: Level) => {
+    setSelectedLevel(level);
+    setRegeneratePrompt("");
+    setShowRegenerateModal(true);
+  };
+
+  const closeRegenerateModal = () => {
+    setShowRegenerateModal(false);
+    setRegeneratePrompt("");
+    setSelectedLevel(null);
   };
 
   // --- Utility Functions ---
@@ -681,6 +778,92 @@ const CourseTemplatePanel: React.FC = () => {
     </div>
   );
 
+  const renderRegenerateModal = () => {
+    if (!showRegenerateModal || !selectedLevel) return null;
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}
+        onClick={closeRegenerateModal}
+      >
+        <div
+          style={{
+            background: "white",
+            borderRadius: "8px",
+            padding: "30px",
+            maxWidth: "500px",
+            width: "90%",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 style={{ ...styles.formHeading, marginBottom: "15px" }}>
+            Regenerate Level
+          </h3>
+          <div style={{ marginBottom: "20px", color: TEXT_COLOR }}>
+            <strong>Level:</strong> {selectedLevel.title}
+          </div>
+          
+          <div style={styles.formGroup}>
+            <label style={styles.label}>
+              Custom Prompt (Optional)
+            </label>
+            <textarea
+              value={regeneratePrompt}
+              onChange={(e) => setRegeneratePrompt(e.target.value)}
+              placeholder="e.g., Make the title more engaging and add focus on practical applications"
+              style={{
+                ...styles.input,
+                minHeight: "100px",
+                resize: "vertical",
+                fontFamily: "inherit",
+              }}
+            />
+            <div style={{ fontSize: "0.85em", color: MUTED_COLOR, marginTop: "5px" }}>
+              Leave empty to regenerate with default settings
+            </div>
+          </div>
+
+          <div style={styles.formActions}>
+            <button
+              onClick={handleRegenerateLevel}
+              disabled={processingLevel}
+              style={{
+                ...getButtonStyle(PRIMARY_COLOR, "white"),
+                opacity: processingLevel ? 0.6 : 1,
+                cursor: processingLevel ? "not-allowed" : "pointer",
+              }}
+            >
+              {processingLevel ? "Regenerating..." : "Regenerate"}
+            </button>
+            <button
+              onClick={closeRegenerateModal}
+              disabled={processingLevel}
+              style={{
+                ...getButtonStyle(MUTED_COLOR, "white"),
+                opacity: processingLevel ? 0.6 : 1,
+                cursor: processingLevel ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderDetailsView = () => {
     if (!selectedTemplate) return null;
 
@@ -804,20 +987,50 @@ const CourseTemplatePanel: React.FC = () => {
                           background: HOVER_COLOR,
                         }}
                       >
-                        <div style={{ fontWeight: 600, color: TEXT_COLOR }}>
-                          Level {index + 1}: {level.title}
-                        </div>
-                        {level.description && (
-                          <div
-                            style={{
-                              fontSize: "0.9em",
-                              color: MUTED_COLOR,
-                              marginTop: "4px",
-                            }}
-                          >
-                            {level.description}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: TEXT_COLOR }}>
+                              Level {index + 1}: {level.title}
+                            </div>
+                            {level.description && (
+                              <div
+                                style={{
+                                  fontSize: "0.9em",
+                                  color: MUTED_COLOR,
+                                  marginTop: "4px",
+                                }}
+                              >
+                                {level.description}
+                              </div>
+                            )}
                           </div>
-                        )}
+                          <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
+                            <button
+                              onClick={() => openRegenerateModal(level)}
+                              disabled={processingLevel}
+                              style={{
+                                ...getButtonStyle(PRIMARY_COLOR, "white", true),
+                                opacity: processingLevel ? 0.6 : 1,
+                                cursor: processingLevel ? "not-allowed" : "pointer",
+                              }}
+                              title="Regenerate this level"
+                            >
+                              Regenerate
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLevel(level.id)}
+                              disabled={processingLevel}
+                              style={{
+                                ...getButtonStyle(DANGER_COLOR, "white", true),
+                                opacity: processingLevel ? 0.6 : 1,
+                                cursor: processingLevel ? "not-allowed" : "pointer",
+                              }}
+                              title="Delete this level"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -909,9 +1122,11 @@ const CourseTemplatePanel: React.FC = () => {
   return (
     <div style={styles.panel}>
       {creatingCourse && <LoadingOverlay message="Creating course template..." />}
+      {processingLevel && <LoadingOverlay message="Processing level..." />}
       {message && (
         <div style={getNotificationStyle(message.type)}>{message.text}</div>
       )}
+      {renderRegenerateModal()}
 
       <div style={styles.sectionHeader}>
         <h2 style={styles.heading}>Course Templates</h2>
