@@ -1,21 +1,14 @@
-import React, { useState, useMemo } from "react";
-// 🚨 IMPORTANT: Adjust this path to where your CountryPanel.tsx is located.
-import CountryPanel from "../components/CountryPanel"; 
-import ExamPanel from "../components/ExamPanel";
-import SubjectsPanel from "../components/SubjectsPanel";
-import TopicsPanel from "../components/TopicsPanel";
-import QuestionsPanel from "../components/QuestionsPanel";
-import CourseTemplatePanel from "../components/CourseTemplatePanel";
-// If CountryPanel.tsx is in the same directory: import CountryPanel from "./CountryPanel";
+import React, { useMemo } from "react";
+import { Outlet, NavLink } from "react-router-dom";
 
-// 📚 Data
-const ITEMS: { key: string; label: string }[] = [
-  { key: "countries", label: "Страны" },
-  { key: "exams", label: "Экзамены" },
-  { key: "subjects", label: "Предметы" },
-  { key: "topics", label: "Темы" },
-  { key: "onboarding-quizzes", label: "Диагностические тесты" },
-  { key: "course-templates", label: "Шаблоны курсов" },
+// 📚 Data - Updated with route paths
+const ITEMS: { key: string; label: string; path: string }[] = [
+  { key: "countries", label: "Страны", path: "/admin/countries" },
+  { key: "exams", label: "Экзамены", path: "/admin/exams" },
+  { key: "subjects", label: "Предметы", path: "/admin/subjects" },
+  { key: "topics", label: "Темы", path: "/admin/topics" },
+  { key: "onboarding-quizzes", label: "Диагностические тесты", path: "/admin/onboarding-quizzes" },
+  { key: "course-templates", label: "Шаблоны курсов", path: "/admin/course-templates" },
 ];
 
 // 🎨 Professional & Simple Styles
@@ -167,53 +160,12 @@ const getStyles = (): Styles => ({
 });
 
 const AdminPage: React.FC = () => {
-  const [selected, setSelected] = useState<string>(ITEMS[0].key);
   const styles = useMemo(() => getStyles(), []);
-
-  const onKeySelect = (e: React.KeyboardEvent, key: string) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setSelected(key);
-    }
-  };
-
-  const selectedItemLabel = ITEMS.find((i) => i.key === selected)?.label || "Dashboard";
   
-  // --- Conditional Content Renderer ---
+  // --- Content rendered via React Router Outlet ---
+  // The Outlet component renders the child route component
   const renderContent = () => {
-    if (selected === 'countries') {
-      // Render the dedicated CountryPanel component
-      return <CountryPanel />;
-    } else if (selected === 'exams') {
-        return <ExamPanel />;
-    } else if (selected === 'subjects') {
-        return <SubjectsPanel />;
-    } else if (selected === 'topics') {
-        return <TopicsPanel />;
-    } else if (selected === 'onboarding-quizzes') {
-        return <QuestionsPanel />;
-    } else if (selected === 'course-templates') {
-        return <CourseTemplatePanel />;
-    }
-
-    // Default placeholder content for other sections
-    return (
-      <>
-        <div style={styles.contentHeader}>
-          <h1 style={styles.heading}>{selectedItemLabel} Management</h1>
-          <p style={styles.subtitle}>
-            Manage, view, and edit all entries for the **{selectedItemLabel}** section.
-          </p>
-        </div>
-        
-        {/* Main Content Area - Placeholder */}
-        <div style={{ padding: 40, border: `1px solid ${BORDER_COLOR}`, borderRadius: 8, minHeight: 400, marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: MUTED_COLOR, textAlign: 'center' }}>
-              Content area for **{selectedItemLabel}** is currently under development.
-          </p>
-        </div>
-      </>
-    );
+    return <Outlet />;
   };
 
   return (
@@ -232,20 +184,21 @@ const AdminPage: React.FC = () => {
 
           <nav style={styles.nav} aria-label="Admin sections">
             {ITEMS.map((it) => {
-              const active = it.key === selected;
               return (
-                <button
+                <NavLink
                   key={it.key}
-                  onClick={() => setSelected(it.key)}
-                  onKeyDown={(e) => onKeySelect(e, it.key)}
-                  aria-current={active ? "page" : undefined}
-                  style={navButtonStyles(active)}
+                  to={it.path}
+                  style={({ isActive }) => navButtonStyles(isActive)}
                 >
-                  <span style={getNavIconStyle(active)} aria-hidden>
-                    {it.label.charAt(0)}
-                  </span>
-                  <span style={{ flex: 1 }}>{it.label}</span>
-                </button>
+                  {({ isActive }: { isActive: boolean }) => (
+                    <>
+                      <span style={getNavIconStyle(isActive)} aria-hidden>
+                        {it.label.charAt(0)}
+                      </span>
+                      <span style={{ flex: 1 }}>{it.label}</span>
+                    </>
+                  )}
+                </NavLink>
               );
             })}
           </nav>
