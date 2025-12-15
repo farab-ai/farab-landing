@@ -9,6 +9,7 @@ const ITEMS: { key: string; label: string; path: string }[] = [
   { key: "topics", label: "Темы", path: "/admin/topics" },
   { key: "onboarding-quizzes", label: "Диагностические тесты", path: "/admin/onboarding-quizzes" },
   { key: "course-templates", label: "Шаблоны курсов", path: "/admin/course-templates" },
+  { key: "cost-monitoring", label: "Мониторинг затрат", path: "/admin/cost-monitoring" },
 ];
 
 // 🎨 Professional & Simple Styles
