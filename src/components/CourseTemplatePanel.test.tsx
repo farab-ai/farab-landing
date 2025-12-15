@@ -828,7 +828,7 @@ describe('CourseTemplatePanel', () => {
       expect(screen.getByText('Level 1: Introduction')).toBeInTheDocument();
     });
 
-    const generateButtons = screen.getAllByText('Generate First Node');
+    const generateButtons = screen.getAllByText('Generate next Node');
     fireEvent.click(generateButtons[0]);
 
     await waitFor(() => {
@@ -836,7 +836,7 @@ describe('CourseTemplatePanel', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('First node generated successfully!')).toBeInTheDocument();
+      expect(screen.getByText('next node generated successfully!')).toBeInTheDocument();
     });
   });
 
