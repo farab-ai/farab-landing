@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { APIHOST } from "../utils/url";
 import {
   LineChart,
@@ -274,26 +274,28 @@ const CostMonitoringPanel: React.FC = () => {
     }
   };
 
-  // Fetch data when dates are set initially
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchUsageStats();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Fetch data when dates are set initially - removed to only load on button click
+  // Users should explicitly click "Load Statistics" or "Load Demo Data"
 
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat("en-US").format(num);
-  };
+  // Memoize formatters to avoid creating new objects on every render
+  const formatNumber = useMemo(
+    () => (num: number) => {
+      return new Intl.NumberFormat("en-US").format(num);
+    },
+    []
+  );
 
-  const formatCurrency = (num: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    }).format(num);
-  };
+  const formatCurrency = useMemo(
+    () => (num: number) => {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+      }).format(num);
+    },
+    []
+  );
 
   return (
     <div style={styles.panel}>
