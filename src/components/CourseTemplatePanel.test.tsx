@@ -1565,4 +1565,402 @@ describe('CourseTemplatePanel', () => {
       expect.objectContaining({ displayMode: false })
     );
   });
+
+  test('displays delete button for each node', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Introduction to Fractions',
+                  description: 'Learn basic fraction concepts',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'lesson',
+                      title: 'What is a Fraction?',
+                      description: 'Introduction to fractions',
+                      points: 15,
+                      order: 1,
+                    },
+                    {
+                      id: 'node2',
+                      type: 'quiz',
+                      title: 'Fraction Quiz',
+                      description: 'Test your knowledge',
+                      points: 30,
+                      order: 2,
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction to Fractions')).toBeInTheDocument();
+    });
+
+    // Expand the level to see nodes
+    fireEvent.click(screen.getByText('Level 1: Introduction to Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📚 Lesson: What is a Fraction\?/)).toBeInTheDocument();
+      expect(screen.getByText(/📝 Quiz: Fraction Quiz/)).toBeInTheDocument();
+    });
+
+    // Check that each node has a delete button
+    const deleteButtons = screen.getAllByTitle('Delete this node');
+    expect(deleteButtons).toHaveLength(2);
+  });
+
+  test('successfully deletes a node with confirmation', async () => {
+    let deleteCalled = false;
+    
+    // Mock window.confirm
+    global.confirm = jest.fn(() => true);
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/nodes/node1') && options?.method === 'DELETE') {
+        deleteCalled = true;
+        return Promise.resolve({
+          ok: true,
+          status: 204,
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Introduction to Fractions',
+                  description: 'Basic concepts',
+                  order: 1,
+                  nodes: deleteCalled ? [
+                    {
+                      id: 'node2',
+                      type: 'quiz',
+                      title: 'Fraction Quiz',
+                      points: 30,
+                      order: 2,
+                    },
+                  ] : [
+                    {
+                      id: 'node1',
+                      type: 'lesson',
+                      title: 'What is a Fraction?',
+                      points: 15,
+                      order: 1,
+                    },
+                    {
+                      id: 'node2',
+                      type: 'quiz',
+                      title: 'Fraction Quiz',
+                      points: 30,
+                      order: 2,
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction to Fractions')).toBeInTheDocument();
+    });
+
+    // Expand the level to see nodes
+    fireEvent.click(screen.getByText('Level 1: Introduction to Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📚 Lesson: What is a Fraction\?/)).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByTitle('Delete this node');
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(global.confirm).toHaveBeenCalled();
+      expect(deleteCalled).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Node deleted successfully!')).toBeInTheDocument();
+    });
+  });
+
+  test('does not delete node when confirmation is cancelled', async () => {
+    let deleteCalled = false;
+    
+    // Mock window.confirm to return false
+    global.confirm = jest.fn(() => false);
+
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: any) => {
+      if (url.includes('/api/exams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'exam1',
+              exam_id: 'UNT',
+              name: { en: 'Unified National Test', ru: 'ЕНТ' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/api/subjects')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'subject1',
+              code: 'MATH',
+              exam_id: 'exam1',
+              name: { en: 'Mathematics', ru: 'Математика' },
+            },
+          ]),
+        });
+      }
+      if (url.includes('/nodes/node1') && options?.method === 'DELETE') {
+        deleteCalled = true;
+        return Promise.resolve({
+          ok: true,
+          status: 204,
+        });
+      }
+      if (url.includes('/api/admin/course-templates/template1')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 'template1',
+            exam_id: 'exam1',
+            subject_id: 'subject1',
+            language: 'en',
+            roadmap_id: 'roadmap1',
+            is_active: true,
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:00Z',
+            exam_name: { en: 'Unified National Test' },
+            subject_name: { en: 'Mathematics' },
+            roadmap: {
+              id: 'roadmap1',
+              goal_statement: 'Master mathematics',
+              levels: [
+                {
+                  id: 'level1',
+                  title: 'Introduction to Fractions',
+                  order: 1,
+                  nodes: [
+                    {
+                      id: 'node1',
+                      type: 'lesson',
+                      title: 'What is a Fraction?',
+                      points: 15,
+                      order: 1,
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        });
+      }
+      if (url.includes('/api/admin/course-templates')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 'template1',
+              exam_id: 'exam1',
+              subject_id: 'subject1',
+              language: 'en',
+              roadmap_id: 'roadmap1',
+              is_active: true,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              exam_name: { en: 'Unified National Test' },
+              subject_name: { en: 'Mathematics' },
+            },
+          ]),
+        });
+      }
+      return Promise.reject(new Error('Not found'));
+    });
+
+    render(<CourseTemplatePanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Level 1: Introduction to Fractions')).toBeInTheDocument();
+    });
+
+    // Expand the level to see nodes
+    fireEvent.click(screen.getByText('Level 1: Introduction to Fractions'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/📚 Lesson: What is a Fraction\?/)).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByTitle('Delete this node');
+    fireEvent.click(deleteButtons[0]);
+
+    await waitFor(() => {
+      expect(global.confirm).toHaveBeenCalled();
+    });
+
+    // Delete should not have been called
+    expect(deleteCalled).toBe(false);
+
+    // Node should still be present
+    expect(screen.getByText(/📚 Lesson: What is a Fraction\?/)).toBeInTheDocument();
+  });
 });
