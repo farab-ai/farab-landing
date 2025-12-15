@@ -45,6 +45,10 @@ describe('CourseTemplatePanel', () => {
     });
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('renders course templates heading', async () => {
     render(<CourseTemplatePanel />);
     
