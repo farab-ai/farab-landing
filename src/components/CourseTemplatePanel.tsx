@@ -731,6 +731,44 @@ const CourseTemplatePanel: React.FC = () => {
     }
   };
 
+  const handleDeleteNode = async (levelId: string, nodeId: string) => {
+    if (!selectedTemplate) return;
+
+    if (!window.confirm("Are you sure you want to delete this node? This action cannot be undone.")) {
+      return;
+    }
+
+    setProcessingLevel(true);
+    try {
+      const response = await fetch(
+        `${API_BASE}/course-templates/${selectedTemplate.id}/levels/${levelId}/nodes/${nodeId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to delete node: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("Node deleted successfully!", "success");
+      
+      // Refresh the template details to show updated levels
+      await handleViewDetails(selectedTemplate.id);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("API Error:", error);
+      showNotification(`Error: ${errorMessage}`, "error");
+    } finally {
+      setProcessingLevel(false);
+    }
+  };
+
   const openRegenerateModal = (level: Level) => {
     setSelectedLevel(level);
     setRegeneratePrompt("");
@@ -1282,7 +1320,7 @@ const CourseTemplatePanel: React.FC = () => {
   };
 
   // --- Render Node Content ---
-  const renderNodeContent = (node: Node) => {
+  const renderNodeContent = (node: Node, levelId: string) => {
     const isExpanded = expandedNodes.has(node.id);
 
     return (
@@ -1298,14 +1336,18 @@ const CourseTemplatePanel: React.FC = () => {
         <div
           style={{
             padding: "12px",
-            cursor: "pointer",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
-          onClick={() => toggleNodeExpand(node.id)}
         >
-          <div style={{ flex: 1 }}>
+          <div 
+            style={{ 
+              flex: 1,
+              cursor: "pointer",
+            }}
+            onClick={() => toggleNodeExpand(node.id)}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "1.2em" }}>{isExpanded ? "▼" : "▶"}</span>
               {node.emoji && <span>{node.emoji}</span>}
@@ -1358,6 +1400,23 @@ const CourseTemplatePanel: React.FC = () => {
                 ⏱️ {node.estimatedMinutes} minutes
               </div>
             )}
+          </div>
+          <div style={{ marginLeft: "10px" }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteNode(levelId, node.id);
+              }}
+              disabled={processingLevel}
+              style={{
+                ...getButtonStyle(DANGER_COLOR, "white", true),
+                opacity: processingLevel ? 0.6 : 1,
+                cursor: processingLevel ? "not-allowed" : "pointer",
+              }}
+              title="Delete this node"
+            >
+              Delete
+            </button>
           </div>
         </div>
 
@@ -1654,7 +1713,7 @@ const CourseTemplatePanel: React.FC = () => {
                               >
                                 Nodes in this level:
                               </div>
-                              {level.nodes?.map((node) => renderNodeContent(node))}
+                              {level.nodes?.map((node) => renderNodeContent(node, level.id))}
                             </div>
                           )}
                         </div>
