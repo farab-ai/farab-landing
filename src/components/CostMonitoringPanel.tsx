@@ -147,14 +147,17 @@ const CostMonitoringPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  // Set default dates (last 30 days)
+  // Set default dates (last month) and auto-load data
   useEffect(() => {
     const today = new Date();
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 30);
+    const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    setEndDate(today.toISOString().split("T")[0]);
-    setStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
+    const startDateStr = firstDayLastMonth.toISOString().split("T")[0];
+    const endDateStr = lastDayLastMonth.toISOString().split("T")[0];
+
+    setStartDate(startDateStr);
+    setEndDate(endDateStr);
   }, []);
 
   // Auto-dismiss messages
@@ -164,6 +167,14 @@ const CostMonitoringPanel: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [message]);
+
+  // Auto-fetch data when dates are set or changed
+  useEffect(() => {
+    if (startDate && endDate) {
+      fetchUsageStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
 
   const loadDemoData = () => {
     const mockData: LLMUsageStats = {
@@ -307,8 +318,9 @@ const CostMonitoringPanel: React.FC = () => {
       {/* Date Range Selection */}
       <div style={styles.dateRangeContainer}>
         <div style={styles.dateGroup}>
-          <label style={styles.label}>Start Date</label>
+          <label htmlFor="start-date" style={styles.label}>Start Date</label>
           <input
+            id="start-date"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -316,8 +328,9 @@ const CostMonitoringPanel: React.FC = () => {
           />
         </div>
         <div style={styles.dateGroup}>
-          <label style={styles.label}>End Date</label>
+          <label htmlFor="end-date" style={styles.label}>End Date</label>
           <input
+            id="end-date"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
@@ -348,7 +361,7 @@ const CostMonitoringPanel: React.FC = () => {
       {/* Empty State */}
       {!loading && !usageStats && (
         <div style={styles.emptyState}>
-          <p>Select a date range and click "Load Statistics" to view usage data</p>
+          <p>No usage data available for the selected date range</p>
           <p style={{ marginTop: "10px", color: "#8b5cf6" }}>
             Or click "Load Demo Data" to see sample charts
           </p>
