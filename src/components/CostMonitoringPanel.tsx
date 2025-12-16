@@ -150,8 +150,8 @@ const CostMonitoringPanel: React.FC = () => {
   // Set default dates (last month) and auto-load data
   useEffect(() => {
     const today = new Date();
-    const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+    const lastDayLastMonth = today;
 
     const startDateStr = firstDayLastMonth.toISOString().split("T")[0];
     const endDateStr = lastDayLastMonth.toISOString().split("T")[0];
