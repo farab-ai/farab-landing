@@ -389,6 +389,8 @@ const CourseTemplatePanel: React.FC = () => {
   const [processingLevel, setProcessingLevel] = useState(false);
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [editingLevel, setEditingLevel] = useState<Level | null>(null);
+  const [savingLevel, setSavingLevel] = useState(false);
 
   const showNotification = (text: string, type: "success" | "error") => {
     setMessage({ text, type });
@@ -806,6 +808,174 @@ const CourseTemplatePanel: React.FC = () => {
     });
   };
 
+  // --- Level Editing Handlers ---
+  const handleStartEditLevel = (level: Level) => {
+    // Create a deep copy of the level for editing
+    setEditingLevel(JSON.parse(JSON.stringify(level)));
+  };
+
+  const handleCancelEditLevel = () => {
+    setEditingLevel(null);
+  };
+
+  const handleSaveLevel = async () => {
+    if (!selectedTemplate || !editingLevel) return;
+
+    setSavingLevel(true);
+    try {
+      const requestBody = {
+        title: editingLevel.title,
+        description: editingLevel.description || "",
+        nodes: editingLevel.nodes || [],
+      };
+
+      const response = await fetch(
+        `${API_BASE}/course-templates/${selectedTemplate.id}/levels/${editingLevel.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `Failed to update level: ${errorBody.message || response.statusText}`
+        );
+      }
+
+      showNotification("Level updated successfully!", "success");
+      setEditingLevel(null);
+      
+      // Refresh the template details to show updated data
+      await handleViewDetails(selectedTemplate.id);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("API Error:", error);
+      showNotification(`Error: ${errorMessage}`, "error");
+    } finally {
+      setSavingLevel(false);
+    }
+  };
+
+  const updateEditingLevelField = (field: keyof Level, value: any) => {
+    if (!editingLevel) return;
+    setEditingLevel({ ...editingLevel, [field]: value });
+  };
+
+  const updateEditingNode = (nodeId: string, updates: Partial<Node>) => {
+    if (!editingLevel || !editingLevel.nodes) return;
+    const updatedNodes = editingLevel.nodes.map((node) =>
+      node.id === nodeId ? { ...node, ...updates } : node
+    );
+    setEditingLevel({ ...editingLevel, nodes: updatedNodes });
+  };
+
+  const updateEditingContentBlock = (nodeId: string, blockId: string, updates: Partial<ContentBlock>) => {
+    if (!editingLevel || !editingLevel.nodes) return;
+    const updatedNodes = editingLevel.nodes.map((node) => {
+      if (node.id === nodeId && node.contentBlocks) {
+        return {
+          ...node,
+          contentBlocks: node.contentBlocks.map((block) =>
+            block.id === blockId ? { ...block, ...updates } : block
+          ),
+        };
+      }
+      return node;
+    });
+    setEditingLevel({ ...editingLevel, nodes: updatedNodes });
+  };
+
+  const updateEditingBulletListItem = (nodeId: string, blockId: string, itemIndex: number, newValue: string) => {
+    if (!editingLevel || !editingLevel.nodes) return;
+    const updatedNodes = editingLevel.nodes.map((node) => {
+      if (node.id === nodeId && node.contentBlocks) {
+        return {
+          ...node,
+          contentBlocks: node.contentBlocks.map((block) => {
+            if (block.id === blockId && block.items) {
+              const newItems = [...block.items];
+              newItems[itemIndex] = newValue;
+              return { ...block, items: newItems };
+            }
+            return block;
+          }),
+        };
+      }
+      return node;
+    });
+    setEditingLevel({ ...editingLevel, nodes: updatedNodes });
+  };
+
+  const updateEditingQuestion = (nodeId: string, questionId: string, updates: Partial<QuizQuestion>) => {
+    if (!editingLevel || !editingLevel.nodes) return;
+    const updatedNodes = editingLevel.nodes.map((node) => {
+      if (node.id === nodeId && node.questions) {
+        return {
+          ...node,
+          questions: node.questions.map((q) =>
+            q.id === questionId ? { ...q, ...updates } : q
+          ),
+        };
+      }
+      return node;
+    });
+    setEditingLevel({ ...editingLevel, nodes: updatedNodes });
+  };
+
+  const updateEditingOption = (nodeId: string, questionId: string, optionId: string, updates: Partial<QuizOption>) => {
+    if (!editingLevel || !editingLevel.nodes) return;
+    const updatedNodes = editingLevel.nodes.map((node) => {
+      if (node.id === nodeId && node.questions) {
+        return {
+          ...node,
+          questions: node.questions.map((q) => {
+            if (q.id === questionId) {
+              return {
+                ...q,
+                options: q.options.map((opt) =>
+                  opt.id === optionId ? { ...opt, ...updates } : opt
+                ),
+              };
+            }
+            return q;
+          }),
+        };
+      }
+      return node;
+    });
+    setEditingLevel({ ...editingLevel, nodes: updatedNodes });
+  };
+
+  const toggleOptionCorrect = (nodeId: string, questionId: string, optionId: string) => {
+    if (!editingLevel || !editingLevel.nodes) return;
+    const updatedNodes = editingLevel.nodes.map((node) => {
+      if (node.id === nodeId && node.questions) {
+        return {
+          ...node,
+          questions: node.questions.map((q) => {
+            if (q.id === questionId) {
+              return {
+                ...q,
+                options: q.options.map((opt) => ({
+                  ...opt,
+                  isCorrect: opt.id === optionId ? !opt.isCorrect : opt.isCorrect,
+                })),
+              };
+            }
+            return q;
+          }),
+        };
+      }
+      return node;
+    });
+    setEditingLevel({ ...editingLevel, nodes: updatedNodes });
+  };
+
   // --- Utility Functions ---
   const getTranslationValue = (translation: Translation | undefined): string => {
     if (!translation) return "N/A";
@@ -1212,6 +1382,99 @@ const CourseTemplatePanel: React.FC = () => {
     }
   };
 
+  // --- Editable Content Block Component ---
+  const EditableContentBlockRenderer: React.FC<{ 
+    nodeId: string; 
+    block: ContentBlock;
+  }> = ({ nodeId, block }) => {
+    switch (block.type) {
+      case "heading":
+        return (
+          <div style={{ marginTop: "15px", marginBottom: "8px" }}>
+            <input
+              type="text"
+              value={block.text || ""}
+              onChange={(e) => updateEditingContentBlock(nodeId, block.id, { text: e.target.value })}
+              onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+              style={{
+                ...styles.input,
+                fontSize: block.level === 2 ? "1.2em" : "1.1em",
+                fontWeight: 600,
+                marginBottom: 0,
+              }}
+              placeholder="Heading text"
+            />
+          </div>
+        );
+      case "text":
+        return (
+          <div style={{ marginBottom: "10px" }}>
+            <textarea
+              value={block.content || ""}
+              onChange={(e) => updateEditingContentBlock(nodeId, block.id, { content: e.target.value })}
+              onDoubleClick={(e) => (e.target as HTMLTextAreaElement).select()}
+              style={{
+                ...styles.input,
+                minHeight: "80px",
+                resize: "vertical",
+                fontFamily: "inherit",
+                marginBottom: 0,
+              }}
+              placeholder="Text content (supports LaTeX with \\( \\) delimiters)"
+            />
+          </div>
+        );
+      case "equation":
+        return (
+          <div style={{ marginBottom: "10px" }}>
+            <input
+              type="text"
+              value={block.content || ""}
+              onChange={(e) => updateEditingContentBlock(nodeId, block.id, { content: e.target.value })}
+              onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+              style={{
+                ...styles.input,
+                marginBottom: 0,
+              }}
+              placeholder="LaTeX equation (e.g., x^2 + 2x - 3 = 0)"
+            />
+          </div>
+        );
+      case "bulletList":
+        return (
+          <div style={{ marginBottom: "10px" }}>
+            {block.items?.map((item, idx) => (
+              <div key={idx} style={{ marginBottom: "5px" }}>
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => updateEditingBulletListItem(nodeId, block.id, idx, e.target.value)}
+                  onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+                  style={{
+                    ...styles.input,
+                    marginBottom: 0,
+                  }}
+                  placeholder={`Bullet point ${idx + 1}`}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      case "divider":
+        return (
+          <hr
+            style={{
+              border: "none",
+              borderTop: `1px solid ${BORDER_COLOR}`,
+              margin: "15px 0",
+            }}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   // --- Equation Renderer Component ---
   const EquationRenderer: React.FC<{ equation: string; displayMode?: boolean }> = ({ equation, displayMode = true }) => {
     const equationRef = useEquationRenderer(equation, displayMode);
@@ -1319,9 +1582,142 @@ const CourseTemplatePanel: React.FC = () => {
     );
   };
 
+  // --- Editable Quiz Question Component ---
+  const renderEditableQuizQuestion = (nodeId: string, question: QuizQuestion, index: number) => {
+    return (
+      <div
+        key={question.id}
+        style={{
+          marginBottom: "15px",
+          padding: "12px",
+          background: HOVER_COLOR,
+          borderRadius: "6px",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            color: TEXT_COLOR,
+            marginBottom: "8px",
+          }}
+        >
+          Question {index + 1} ({question.type}, {question.points} points):
+        </div>
+        
+        <div style={{ marginBottom: "8px" }}>
+          <label style={{ ...styles.label, fontSize: "0.9em" }}>Question Text:</label>
+          <textarea
+            value={question.question}
+            onChange={(e) => updateEditingQuestion(nodeId, question.id, { question: e.target.value })}
+            onDoubleClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            style={{
+              ...styles.input,
+              minHeight: "60px",
+              resize: "vertical",
+              fontFamily: "inherit",
+              marginBottom: 0,
+            }}
+            placeholder="Question text (supports LaTeX with \\( \\) delimiters)"
+          />
+        </div>
+
+        {question.equation !== undefined && (
+          <div style={{ marginBottom: "8px" }}>
+            <label style={{ ...styles.label, fontSize: "0.9em" }}>Equation (optional):</label>
+            <input
+              type="text"
+              value={question.equation || ""}
+              onChange={(e) => updateEditingQuestion(nodeId, question.id, { equation: e.target.value })}
+              onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+              style={{
+                ...styles.input,
+                marginBottom: 0,
+              }}
+              placeholder="LaTeX equation"
+            />
+          </div>
+        )}
+
+        {question.options && question.options.length > 0 && (
+          <div style={{ marginLeft: "15px", marginBottom: "8px" }}>
+            <label style={{ ...styles.label, fontSize: "0.9em" }}>Options:</label>
+            {question.options.map((opt) => (
+              <div
+                key={opt.id}
+                style={{
+                  marginBottom: "8px",
+                  padding: "8px",
+                  background: "white",
+                  borderRadius: "4px",
+                  border: `1px solid ${BORDER_COLOR}`,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", marginBottom: "4px" }}>
+                  <input
+                    type="checkbox"
+                    checked={opt.isCorrect}
+                    onChange={() => toggleOptionCorrect(nodeId, question.id, opt.id)}
+                    style={{ marginRight: "8px" }}
+                  />
+                  <span style={{ fontSize: "0.85em", color: MUTED_COLOR }}>
+                    {opt.isCorrect ? "✓ Correct" : "○ Incorrect"}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={opt.text || ""}
+                  onChange={(e) => updateEditingOption(nodeId, question.id, opt.id, { text: e.target.value })}
+                  onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+                  style={{
+                    ...styles.input,
+                    marginBottom: opt.equation !== undefined ? "4px" : 0,
+                  }}
+                  placeholder="Option text (supports LaTeX)"
+                />
+                {opt.equation !== undefined && (
+                  <input
+                    type="text"
+                    value={opt.equation || ""}
+                    onChange={(e) => updateEditingOption(nodeId, question.id, opt.id, { equation: e.target.value })}
+                    onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+                    style={{
+                      ...styles.input,
+                      marginBottom: 0,
+                    }}
+                    placeholder="Option equation (LaTeX)"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginBottom: "8px" }}>
+          <label style={{ ...styles.label, fontSize: "0.9em" }}>Explanation:</label>
+          <textarea
+            value={question.explanation}
+            onChange={(e) => updateEditingQuestion(nodeId, question.id, { explanation: e.target.value })}
+            onDoubleClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            style={{
+              ...styles.input,
+              minHeight: "60px",
+              resize: "vertical",
+              fontFamily: "inherit",
+              marginBottom: 0,
+            }}
+            placeholder="Explanation text"
+          />
+        </div>
+      </div>
+    );
+  };
+
   // --- Render Node Content ---
   const renderNodeContent = (node: Node, levelId: string) => {
     const isExpanded = expandedNodes.has(node.id);
+    const isEditing = editingLevel?.id === levelId;
+    const editingNode = isEditing ? editingLevel?.nodes?.find((n) => n.id === node.id) : null;
+    const displayNode = editingNode || node;
 
     return (
       <div
@@ -1350,21 +1746,21 @@ const CourseTemplatePanel: React.FC = () => {
           >
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "1.2em" }}>{isExpanded ? "▼" : "▶"}</span>
-              {node.emoji && <span>{node.emoji}</span>}
+              {displayNode.emoji && <span>{displayNode.emoji}</span>}
               <span style={{ fontWeight: 600, color: TEXT_COLOR }}>
-                {node.type === "lesson" ? "📚 Lesson" : "📝 Quiz"}: {node.title}
+                {displayNode.type === "lesson" ? "📚 Lesson" : "📝 Quiz"}: {displayNode.title}
               </span>
               <span
                 style={{
                   ...styles.badge,
-                  background: node.type === "lesson" ? "#3b82f6" : "#8b5cf6",
+                  background: displayNode.type === "lesson" ? "#3b82f6" : "#8b5cf6",
                   color: "white",
                 }}
               >
-                {node.points} pts
+                {displayNode.points} pts
               </span>
             </div>
-            {node.subtitle && (
+            {displayNode.subtitle && (
               <div
                 style={{
                   fontSize: "0.85em",
@@ -1373,10 +1769,10 @@ const CourseTemplatePanel: React.FC = () => {
                   marginLeft: "28px",
                 }}
               >
-                {node.subtitle}
+                {displayNode.subtitle}
               </div>
             )}
-            {node.description && (
+            {displayNode.description && (
               <div
                 style={{
                   fontSize: "0.9em",
@@ -1385,10 +1781,10 @@ const CourseTemplatePanel: React.FC = () => {
                   marginLeft: "28px",
                 }}
               >
-                {node.description}
+                {displayNode.description}
               </div>
             )}
-            {node.estimatedMinutes && (
+            {displayNode.estimatedMinutes && (
               <div
                 style={{
                   fontSize: "0.85em",
@@ -1397,27 +1793,29 @@ const CourseTemplatePanel: React.FC = () => {
                   marginLeft: "28px",
                 }}
               >
-                ⏱️ {node.estimatedMinutes} minutes
+                ⏱️ {displayNode.estimatedMinutes} minutes
               </div>
             )}
           </div>
-          <div style={{ marginLeft: "10px" }}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteNode(levelId, node.id);
-              }}
-              disabled={processingLevel}
-              style={{
-                ...getButtonStyle(DANGER_COLOR, "white", true),
-                opacity: processingLevel ? 0.6 : 1,
-                cursor: processingLevel ? "not-allowed" : "pointer",
-              }}
-              title="Delete this node"
-            >
-              Delete
-            </button>
-          </div>
+          {!isEditing && (
+            <div style={{ marginLeft: "10px" }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteNode(levelId, node.id);
+                }}
+                disabled={processingLevel}
+                style={{
+                  ...getButtonStyle(DANGER_COLOR, "white", true),
+                  opacity: processingLevel ? 0.6 : 1,
+                  cursor: processingLevel ? "not-allowed" : "pointer",
+                }}
+                title="Delete this node"
+              >
+                Delete
+              </button>
+            </div>
+          )}
         </div>
 
         {isExpanded && (
@@ -1428,7 +1826,23 @@ const CourseTemplatePanel: React.FC = () => {
               background: HOVER_COLOR,
             }}
           >
-            {node.type === "lesson" && node.contentBlocks && (
+            {isEditing && editingNode && (
+              <div style={{ marginBottom: "15px" }}>
+                <div style={{ marginBottom: "8px" }}>
+                  <label style={{ ...styles.label, fontSize: "0.9em" }}>Node Title:</label>
+                  <input
+                    type="text"
+                    value={editingNode.title}
+                    onChange={(e) => updateEditingNode(node.id, { title: e.target.value })}
+                    onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+                    style={styles.input}
+                    placeholder="Node title"
+                  />
+                </div>
+              </div>
+            )}
+
+            {displayNode.type === "lesson" && displayNode.contentBlocks && (
               <div>
                 <div
                   style={{
@@ -1439,13 +1853,19 @@ const CourseTemplatePanel: React.FC = () => {
                 >
                   Lesson Content:
                 </div>
-                {node.contentBlocks.map((block) => (
-                  <ContentBlockRenderer key={block.id} block={block} />
-                ))}
+                {isEditing && editingNode?.contentBlocks ? (
+                  editingNode.contentBlocks.map((block) => (
+                    <EditableContentBlockRenderer key={block.id} nodeId={node.id} block={block} />
+                  ))
+                ) : (
+                  displayNode.contentBlocks.map((block) => (
+                    <ContentBlockRenderer key={block.id} block={block} />
+                  ))
+                )}
               </div>
             )}
 
-            {node.type === "quiz" && node.questions && (
+            {displayNode.type === "quiz" && displayNode.questions && (
               <div>
                 <div
                   style={{
@@ -1454,21 +1874,27 @@ const CourseTemplatePanel: React.FC = () => {
                     marginBottom: "10px",
                   }}
                 >
-                  Quiz Questions ({node.questions.length}):
+                  Quiz Questions ({displayNode.questions.length}):
                 </div>
-                {node.questions.map((question, idx) =>
-                  renderQuizQuestion(question, idx)
+                {isEditing && editingNode?.questions ? (
+                  editingNode.questions.map((question, idx) =>
+                    renderEditableQuizQuestion(node.id, question, idx)
+                  )
+                ) : (
+                  displayNode.questions.map((question, idx) =>
+                    renderQuizQuestion(question, idx)
+                  )
                 )}
               </div>
             )}
 
-            {node.type === "quiz" && (!node.questions || node.questions.length === 0) && (
+            {displayNode.type === "quiz" && (!displayNode.questions || displayNode.questions.length === 0) && (
               <div style={{ color: MUTED_COLOR, fontSize: "0.9em" }}>
                 No questions available
               </div>
             )}
 
-            {node.type === "lesson" && (!node.contentBlocks || node.contentBlocks.length === 0) && (
+            {displayNode.type === "lesson" && (!displayNode.contentBlocks || displayNode.contentBlocks.length === 0) && (
               <div style={{ color: MUTED_COLOR, fontSize: "0.9em" }}>
                 No content blocks available
               </div>
@@ -1595,12 +2021,14 @@ const CourseTemplatePanel: React.FC = () => {
                     {selectedTemplate.roadmap.levels.map((level, index) => {
                       const isExpanded = expandedLevels.has(level.id);
                       const hasNodes = level.nodes && level.nodes.length > 0;
+                      const isEditingThisLevel = editingLevel?.id === level.id;
+                      const displayLevel = isEditingThisLevel ? editingLevel : level;
 
                       return (
                         <div
                           key={level.id}
                           style={{
-                            border: `1px solid ${BORDER_COLOR}`,
+                            border: `1px solid ${isEditingThisLevel ? PRIMARY_COLOR : BORDER_COLOR}`,
                             borderRadius: "6px",
                             background: HOVER_COLOR,
                           }}
@@ -1614,84 +2042,168 @@ const CourseTemplatePanel: React.FC = () => {
                             }}
                           >
                             <div style={{ flex: 1 }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "8px",
-                                  cursor: hasNodes ? "pointer" : "default",
-                                }}
-                                onClick={() => hasNodes && toggleLevelExpand(level.id)}
-                              >
-                                {hasNodes && (
-                                  <span style={{ fontSize: "1em" }}>
-                                    {isExpanded ? "▼" : "▶"}
-                                  </span>
-                                )}
-                                <div style={{ fontWeight: 600, color: TEXT_COLOR }}>
-                                  Level {index + 1}: {level.title}
+                              {isEditingThisLevel ? (
+                                <div>
+                                  <div style={{ marginBottom: "8px" }}>
+                                    <label style={{ ...styles.label, fontSize: "0.9em" }}>Level Title:</label>
+                                    <input
+                                      type="text"
+                                      value={displayLevel!.title}
+                                      onChange={(e) => updateEditingLevelField("title", e.target.value)}
+                                      onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
+                                      style={styles.input}
+                                      placeholder="Level title"
+                                    />
+                                  </div>
+                                  <div style={{ marginBottom: "8px" }}>
+                                    <label style={{ ...styles.label, fontSize: "0.9em" }}>Level Description:</label>
+                                    <textarea
+                                      value={displayLevel!.description || ""}
+                                      onChange={(e) => updateEditingLevelField("description", e.target.value)}
+                                      onDoubleClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                                      style={{
+                                        ...styles.input,
+                                        minHeight: "60px",
+                                        resize: "vertical",
+                                        fontFamily: "inherit",
+                                      }}
+                                      placeholder="Level description"
+                                    />
+                                  </div>
                                 </div>
-                                {hasNodes && (
-                                  <span
-                                    style={{
-                                      ...styles.badge,
-                                      background: PRIMARY_COLOR,
-                                      color: "white",
-                                    }}
-                                  >
-                                    {level.nodes?.length || 0} nodes
-                                  </span>
-                                )}
-                              </div>
-                              {level.description && (
+                              ) : (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    cursor: hasNodes ? "pointer" : "default",
+                                  }}
+                                  onClick={() => hasNodes && toggleLevelExpand(level.id)}
+                                  onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartEditLevel(level);
+                                  }}
+                                  title="Double-click to edit"
+                                >
+                                  {hasNodes && (
+                                    <span style={{ fontSize: "1em" }}>
+                                      {isExpanded ? "▼" : "▶"}
+                                    </span>
+                                  )}
+                                  <div style={{ fontWeight: 600, color: TEXT_COLOR }}>
+                                    Level {index + 1}: {level.title}
+                                  </div>
+                                  {hasNodes && (
+                                    <span
+                                      style={{
+                                        ...styles.badge,
+                                        background: PRIMARY_COLOR,
+                                        color: "white",
+                                      }}
+                                    >
+                                      {level.nodes?.length || 0} nodes
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {!isEditingThisLevel && level.description && (
                                 <div
                                   style={{
                                     fontSize: "0.9em",
                                     color: MUTED_COLOR,
                                     marginTop: "4px",
                                   }}
+                                  onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartEditLevel(level);
+                                  }}
+                                  title="Double-click to edit"
                                 >
                                   {level.description}
                                 </div>
                               )}
                             </div>
                             <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
-                              <button
-                                onClick={() => handleGenerateFullLevel(level.id)}
-                                disabled={processingLevel}
-                                style={{
-                                  ...getButtonStyle(SUCCESS_COLOR, "white", true),
-                                  opacity: processingLevel ? 0.6 : 1,
-                                  cursor: processingLevel ? "not-allowed" : "pointer",
-                                }}
-                                title="Generate next node for this level"
-                              >
-                                Generate next Node
-                              </button>
-                              <button
-                                onClick={() => openRegenerateModal(level)}
-                                disabled={processingLevel}
-                                style={{
-                                  ...getButtonStyle(PRIMARY_COLOR, "white", true),
-                                  opacity: processingLevel ? 0.6 : 1,
-                                  cursor: processingLevel ? "not-allowed" : "pointer",
-                                }}
-                                title="Regenerate this level"
-                              >
-                                Regenerate
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLevel(level.id)}
-                                disabled={processingLevel}
-                                style={{
-                                  ...getButtonStyle(DANGER_COLOR, "white", true),
-                                  opacity: processingLevel ? 0.6 : 1,
-                                  cursor: processingLevel ? "not-allowed" : "pointer",
-                                }}
-                                title="Delete this level"
-                              >
-                                Delete
-                              </button>
+                              {isEditingThisLevel ? (
+                                <>
+                                  <button
+                                    onClick={handleSaveLevel}
+                                    disabled={savingLevel}
+                                    style={{
+                                      ...getButtonStyle(SUCCESS_COLOR, "white", true),
+                                      opacity: savingLevel ? 0.6 : 1,
+                                      cursor: savingLevel ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Save changes to this level"
+                                  >
+                                    {savingLevel ? "Saving..." : "Save"}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEditLevel}
+                                    disabled={savingLevel}
+                                    style={{
+                                      ...getButtonStyle(MUTED_COLOR, "white", true),
+                                      opacity: savingLevel ? 0.6 : 1,
+                                      cursor: savingLevel ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Cancel editing"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleStartEditLevel(level)}
+                                    disabled={processingLevel || editingLevel !== null}
+                                    style={{
+                                      ...getButtonStyle("#2563eb", "white", true),
+                                      opacity: (processingLevel || editingLevel !== null) ? 0.6 : 1,
+                                      cursor: (processingLevel || editingLevel !== null) ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Edit this level"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleGenerateFullLevel(level.id)}
+                                    disabled={processingLevel || editingLevel !== null}
+                                    style={{
+                                      ...getButtonStyle(SUCCESS_COLOR, "white", true),
+                                      opacity: (processingLevel || editingLevel !== null) ? 0.6 : 1,
+                                      cursor: (processingLevel || editingLevel !== null) ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Generate next node for this level"
+                                  >
+                                    Generate next Node
+                                  </button>
+                                  <button
+                                    onClick={() => openRegenerateModal(level)}
+                                    disabled={processingLevel || editingLevel !== null}
+                                    style={{
+                                      ...getButtonStyle(PRIMARY_COLOR, "white", true),
+                                      opacity: (processingLevel || editingLevel !== null) ? 0.6 : 1,
+                                      cursor: (processingLevel || editingLevel !== null) ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Regenerate this level"
+                                  >
+                                    Regenerate
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteLevel(level.id)}
+                                    disabled={processingLevel || editingLevel !== null}
+                                    style={{
+                                      ...getButtonStyle(DANGER_COLOR, "white", true),
+                                      opacity: (processingLevel || editingLevel !== null) ? 0.6 : 1,
+                                      cursor: (processingLevel || editingLevel !== null) ? "not-allowed" : "pointer",
+                                    }}
+                                    title="Delete this level"
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -1713,7 +2225,7 @@ const CourseTemplatePanel: React.FC = () => {
                               >
                                 Nodes in this level:
                               </div>
-                              {level.nodes?.map((node) => renderNodeContent(node, level.id))}
+                              {displayLevel!.nodes?.map((node) => renderNodeContent(node, level.id))}
                             </div>
                           )}
                         </div>
@@ -1824,6 +2336,7 @@ const CourseTemplatePanel: React.FC = () => {
     <div style={styles.panel}>
       {creatingCourse && <LoadingOverlay message="Creating course template..." />}
       {processingLevel && <LoadingOverlay message="Processing level..." />}
+      {savingLevel && <LoadingOverlay message="Saving level..." />}
       {message && (
         <div style={getNotificationStyle(message.type)}>{message.text}</div>
       )}
