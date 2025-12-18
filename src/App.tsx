@@ -11,6 +11,7 @@ import TopicsPanel from "./components/TopicsPanel";
 import QuestionsPanel from "./components/QuestionsPanel";
 import CourseTemplatePanel from "./components/CourseTemplatePanel";
 import CostMonitoringPanel from "./components/CostMonitoringPanel";
+import MetricsPanel from "./components/MetricsPanel";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="onboarding-quizzes" element={<QuestionsPanel />} />
             <Route path="course-templates" element={<CourseTemplatePanel />} />
             <Route path="cost-monitoring" element={<CostMonitoringPanel />} />
+            <Route path="metrics" element={<MetricsPanel />} />
             <Route index element={<Navigate to="countries" replace />} />
           </Route>
           <Route path="/" element={<LandingPage />} />
