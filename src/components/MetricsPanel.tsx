@@ -320,7 +320,7 @@ const MetricsPanel: React.FC = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                    <Tooltip formatter={(value) => (typeof value === 'number' ? formatCurrency(value) : value)} />
                     <Legend />
                     <Bar dataKey="revenue" fill="#0c4a6e" name="Revenue (USD)" />
                   </BarChart>
