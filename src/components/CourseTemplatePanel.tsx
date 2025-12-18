@@ -810,8 +810,12 @@ const CourseTemplatePanel: React.FC = () => {
 
   // --- Level Editing Handlers ---
   const handleStartEditLevel = (level: Level) => {
-    // Create a deep copy of the level for editing
-    setEditingLevel(JSON.parse(JSON.stringify(level)));
+    // Create a deep copy of the level for editing using structuredClone if available, fallback to JSON method
+    if (typeof structuredClone !== 'undefined') {
+      setEditingLevel(structuredClone(level));
+    } else {
+      setEditingLevel(JSON.parse(JSON.stringify(level)));
+    }
   };
 
   const handleCancelEditLevel = () => {
@@ -861,7 +865,7 @@ const CourseTemplatePanel: React.FC = () => {
     }
   };
 
-  const updateEditingLevelField = (field: keyof Level, value: any) => {
+  const updateEditingLevelField = <K extends keyof Level>(field: K, value: Level[K]) => {
     if (!editingLevel) return;
     setEditingLevel({ ...editingLevel, [field]: value });
   };
@@ -2048,7 +2052,7 @@ const CourseTemplatePanel: React.FC = () => {
                                     <label style={{ ...styles.label, fontSize: "0.9em" }}>Level Title:</label>
                                     <input
                                       type="text"
-                                      value={displayLevel!.title}
+                                      value={displayLevel?.title || ""}
                                       onChange={(e) => updateEditingLevelField("title", e.target.value)}
                                       onDoubleClick={(e) => (e.target as HTMLInputElement).select()}
                                       style={styles.input}
@@ -2058,7 +2062,7 @@ const CourseTemplatePanel: React.FC = () => {
                                   <div style={{ marginBottom: "8px" }}>
                                     <label style={{ ...styles.label, fontSize: "0.9em" }}>Level Description:</label>
                                     <textarea
-                                      value={displayLevel!.description || ""}
+                                      value={displayLevel?.description || ""}
                                       onChange={(e) => updateEditingLevelField("description", e.target.value)}
                                       onDoubleClick={(e) => (e.target as HTMLTextAreaElement).select()}
                                       style={{
@@ -2225,7 +2229,7 @@ const CourseTemplatePanel: React.FC = () => {
                               >
                                 Nodes in this level:
                               </div>
-                              {displayLevel!.nodes?.map((node) => renderNodeContent(node, level.id))}
+                              {displayLevel?.nodes?.map((node) => renderNodeContent(node, level.id))}
                             </div>
                           )}
                         </div>
