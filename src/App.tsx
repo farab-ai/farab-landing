@@ -12,6 +12,7 @@ import QuestionsPanel from "./components/QuestionsPanel";
 import CourseTemplatePanel from "./components/CourseTemplatePanel";
 import CostMonitoringPanel from "./components/CostMonitoringPanel";
 import MetricsPanel from "./components/MetricsPanel";
+import SupportRequestsPanel from "./components/SupportRequestsPanel";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="course-templates" element={<CourseTemplatePanel />} />
             <Route path="cost-monitoring" element={<CostMonitoringPanel />} />
             <Route path="metrics" element={<MetricsPanel />} />
+            <Route path="support-requests" element={<SupportRequestsPanel />} />
             <Route index element={<Navigate to="countries" replace />} />
           </Route>
           <Route path="/" element={<LandingPage />} />
