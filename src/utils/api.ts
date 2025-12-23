@@ -61,8 +61,9 @@ export async function submitSupportRequest(data: SupportRequest): Promise<ApiRes
       const retryAfter = result.retryAfter;
       let errorMessage = result.error || 'Too many requests. Please try again in a few minutes.';
       
-      // Add human-readable time if retryAfter is provided
-      if (retryAfter) {
+      // Add human-readable time if retryAfter is provided and valid
+      // retryAfter is expected to be in seconds
+      if (retryAfter && typeof retryAfter === 'number' && retryAfter > 0) {
         const minutes = Math.ceil(retryAfter / 60);
         errorMessage = `Rate limit exceeded. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`;
       }
