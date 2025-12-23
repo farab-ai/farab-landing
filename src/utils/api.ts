@@ -1,5 +1,4 @@
-// API utility functions
-// In production, replace this with actual backend API calls
+// API utility functions for Farab support requests
 
 export interface SupportRequest {
   email: string;
@@ -18,101 +17,94 @@ export interface ApiResponse {
 }
 
 /**
- * Submit a support request
+ * Submit a support request to the backend API
  * 
- * This is a mock implementation for development.
- * In production, replace this with actual API endpoint:
- * POST https://api.farab.xyz/api/support-request
+ * POST /api/support-request
+ * Rate limited to one request per IP every 5 minutes
  */
 export async function submitSupportRequest(data: SupportRequest): Promise<ApiResponse> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // Basic validation
-  if (!data.email || !data.message) {
-    return {
-      success: false,
-      error: 'Email and message are required'
-    };
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(data.email)) {
-    return {
-      success: false,
-      error: 'Invalid email address'
-    };
-  }
-
-  if (data.message.length < 10) {
-    return {
-      success: false,
-      error: 'Message must be at least 10 characters'
-    };
-  }
-
-  // Log the request (in production, this would be sent to backend)
-  console.log('Support Request Submitted:', {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
-
-  // Store in localStorage for demonstration (in production, use backend database)
   try {
-    const existingRequests = JSON.parse(localStorage.getItem('supportRequests') || '[]');
-    // Generate a simple unique ID that works in all browsers
-    const generateId = () => {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-      }
-      // Fallback for browsers without crypto.randomUUID
-      return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-    };
-    
-    existingRequests.push({
-      id: generateId(),
-      ...data,
-      status: 'open',
-      createdAt: new Date().toISOString(),
+    const response = await fetch('/api/support-request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
     });
-    localStorage.setItem('supportRequests', JSON.stringify(existingRequests));
-  } catch (error) {
-    console.error('Failed to store support request:', error);
-  }
 
-  // Simulate success
-  return {
-    success: true,
-    message: 'Support request received'
-  };
+    const result = await response.json();
+
+    // Handle different response status codes
+    if (response.status === 429) {
+      // Rate limit exceeded
+      return {
+        success: false,
+        error: result.error || 'Too many requests. Please try again in a few minutes.',
+      };
+    }
+
+    if (response.status === 400) {
+      // Bad request - validation error
+      return {
+        success: false,
+        error: result.error || 'Invalid email or message too short.',
+      };
+    }
+
+    if (response.status === 500) {
+      // Internal server error
+      return {
+        success: false,
+        error: result.error || 'Server error. Please try again later.',
+      };
+    }
+
+    if (!response.ok) {
+      // Other error
+      return {
+        success: false,
+        error: result.error || 'Failed to submit support request.',
+      };
+    }
+
+    // Success
+    return {
+      success: result.success !== undefined ? result.success : true,
+      message: result.message || 'Support request received',
+    };
+  } catch (error) {
+    // Network error or other exception
+    console.error('Error submitting support request:', error);
+    return {
+      success: false,
+      error: 'Network error. Please check your connection and try again.',
+    };
+  }
 }
 
 /**
- * Backend API integration instructions:
+ * Backend API Documentation:
  * 
- * 1. Deploy a backend API with this endpoint:
- *    POST /api/support-request
+ * Endpoint: POST /api/support-request
+ * Rate limit: One request per IP address every 5 minutes
  * 
- * 2. Database schema (PostgreSQL example):
- *    CREATE TABLE support_requests (
- *      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
- *      email VARCHAR(255) NOT NULL,
- *      subject VARCHAR(255),
- *      message TEXT NOT NULL,
- *      platform VARCHAR(50),
- *      app_version VARCHAR(50),
- *      source VARCHAR(50),
- *      status VARCHAR(20) DEFAULT 'open',
- *      created_at TIMESTAMP DEFAULT NOW()
- *    );
+ * Request body (CreateSupportRequestRequest):
+ * - email: string (required)
+ * - message: string (required, minLength: 10)
+ * - subject: string (optional)
+ * - platform: string (optional)
+ * - appVersion: string (optional)
+ * - locale: string (optional)
+ * - source: string (optional)
  * 
- * 3. Replace this function with:
- *    export async function submitSupportRequest(data: SupportRequest): Promise<ApiResponse> {
- *      const response = await fetch('https://api.farab.xyz/api/support-request', {
- *        method: 'POST',
- *        headers: { 'Content-Type': 'application/json' },
- *        body: JSON.stringify(data),
- *      });
- *      return response.json();
- *    }
+ * Response (SupportRequestResponse):
+ * - success: boolean
+ * - message: string (optional)
+ * - error: string (optional)
+ * 
+ * Status codes:
+ * - 200: Success
+ * - 400: Bad request (invalid email or message too short)
+ * - 429: Rate limit exceeded
+ * - 500: Internal server error
  */
