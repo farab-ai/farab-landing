@@ -1,4 +1,5 @@
 import React from 'react';
+import ContactSupport from '../components/ContactSupport';
 
 const LandingPage: React.FC = () => {
   return (
@@ -9,7 +10,7 @@ const LandingPage: React.FC = () => {
           <nav className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-3xl" style={{ background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)', boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)' }}>
-                  <img src="logo.jpg"  />
+                  <img src="logo.jpg" alt="Farab Logo" />
               </div>
               <span className="text-3xl font-bold" style={{ color: '#14b8a6', letterSpacing: '-0.5px' }}>farab</span>
             </div>
@@ -253,6 +254,13 @@ const LandingPage: React.FC = () => {
             <p className="text-sm mt-6" style={{ color: '#718096' }}>
               No credit card required • Free forever
             </p>
+          </div>
+        </section>
+
+        {/* Contact Support */}
+        <section className="px-6 py-24">
+          <div className="max-w-4xl mx-auto">
+            <ContactSupport />
           </div>
         </section>
 
