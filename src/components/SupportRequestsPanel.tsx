@@ -1,7 +1,23 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { APIHOST } from "../utils/url";
 
 const API_BASE = `${APIHOST}/api/admin`;
+
+// Helper function for formatting dates
+const formatDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  } catch {
+    return dateString;
+  }
+};
 
 // 🌍 Data Structures
 interface SupportRequest {
@@ -192,7 +208,7 @@ const SupportRequestsPanel: React.FC = () => {
     setTimeout(() => setMessage(null), 4000);
   };
 
-  const loadSupportRequests = async () => {
+  const loadSupportRequests = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -228,12 +244,11 @@ const SupportRequestsPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, statusFilter]);
 
   useEffect(() => {
     loadSupportRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, statusFilter]);
+  }, [loadSupportRequests]);
 
   const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatusFilter(e.target.value);
@@ -251,24 +266,6 @@ const SupportRequestsPanel: React.FC = () => {
       setCurrentPage(currentPage + 1);
     }
   };
-
-  const formatDate = useMemo(
-    () => (dateString: string) => {
-      try {
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }).format(date);
-      } catch {
-        return dateString;
-      }
-    },
-    []
-  );
 
   return (
     <div style={styles.panel}>
