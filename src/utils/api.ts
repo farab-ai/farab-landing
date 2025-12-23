@@ -32,7 +32,25 @@ export async function submitSupportRequest(data: SupportRequest): Promise<ApiRes
       body: JSON.stringify(data),
     });
 
-    const result = await response.json();
+    // Try to parse JSON response, handle non-JSON responses gracefully
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      // Handle non-JSON responses (e.g., HTML error pages)
+      console.error('Failed to parse response as JSON:', parseError);
+      if (!response.ok) {
+        return {
+          success: false,
+          error: `Server error (${response.status}). Please try again later.`,
+        };
+      }
+      // If response was OK but not JSON, treat as success
+      return {
+        success: true,
+        message: 'Support request received',
+      };
+    }
 
     // Handle different response status codes
     if (response.status === 429) {
@@ -67,9 +85,9 @@ export async function submitSupportRequest(data: SupportRequest): Promise<ApiRes
       };
     }
 
-    // Success
+    // Success - use the success field from response if provided, otherwise assume true for 200
     return {
-      success: result.success !== undefined ? result.success : true,
+      success: result.success !== false, // Treat as success unless explicitly false
       message: result.message || 'Support request received',
     };
   } catch (error) {
