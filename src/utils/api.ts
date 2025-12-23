@@ -14,6 +14,7 @@ export interface ApiResponse {
   success: boolean;
   message?: string;
   error?: string;
+  retryAfter?: number; // Seconds to wait before retrying (for rate limit)
 }
 
 /**
@@ -54,10 +55,20 @@ export async function submitSupportRequest(data: SupportRequest): Promise<ApiRes
 
     // Handle different response status codes
     if (response.status === 429) {
-      // Rate limit exceeded
+      // Rate limit exceeded - include retryAfter if provided
+      const retryAfter = result.retryAfter;
+      let errorMessage = result.error || 'Too many requests. Please try again in a few minutes.';
+      
+      // Add human-readable time if retryAfter is provided
+      if (retryAfter) {
+        const minutes = Math.ceil(retryAfter / 60);
+        errorMessage = `Rate limit exceeded. Please try again in ${minutes} minute${minutes !== 1 ? 's' : ''}.`;
+      }
+      
       return {
         success: false,
-        error: result.error || 'Too many requests. Please try again in a few minutes.',
+        error: errorMessage,
+        retryAfter: retryAfter,
       };
     }
 
@@ -119,10 +130,18 @@ export async function submitSupportRequest(data: SupportRequest): Promise<ApiRes
  * - success: boolean
  * - message: string (optional)
  * - error: string (optional)
+ * - retryAfter: number (optional, seconds until rate limit resets)
  * 
  * Status codes:
  * - 200: Success
  * - 400: Bad request (invalid email or message too short)
- * - 429: Rate limit exceeded
+ * - 429: Rate limit exceeded (includes retryAfter field)
  * - 500: Internal server error
+ * 
+ * Example rate limit response:
+ * {
+ *   "success": false,
+ *   "error": "Rate limit exceeded. Please try again later.",
+ *   "retryAfter": 245
+ * }
  */
