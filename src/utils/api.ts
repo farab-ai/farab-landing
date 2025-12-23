@@ -1,5 +1,7 @@
 // API utility functions for Farab support requests
 
+import { APIHOST } from "./url";
+
 export interface SupportRequest {
   email: string;
   subject?: string;
@@ -24,7 +26,7 @@ export interface ApiResponse {
  */
 export async function submitSupportRequest(data: SupportRequest): Promise<ApiResponse> {
   try {
-    const response = await fetch('/api/support-request', {
+    const response = await fetch(`${APIHOST}/api/support-request`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
