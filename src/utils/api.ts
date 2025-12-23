@@ -60,8 +60,17 @@ export async function submitSupportRequest(data: SupportRequest): Promise<ApiRes
   // Store in localStorage for demonstration (in production, use backend database)
   try {
     const existingRequests = JSON.parse(localStorage.getItem('supportRequests') || '[]');
+    // Generate a simple unique ID that works in all browsers
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      // Fallback for browsers without crypto.randomUUID
+      return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    };
+    
     existingRequests.push({
-      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+      id: generateId(),
       ...data,
       status: 'open',
       createdAt: new Date().toISOString(),

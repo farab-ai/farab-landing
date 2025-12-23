@@ -146,7 +146,7 @@ const ContactSupport: React.FC<ContactSupportProps> = ({ className = '' }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
                 style={{
                   borderColor: errors.email ? '#ef4444' : 'rgba(20, 184, 166, 0.2)',
                   background: 'white',
@@ -173,7 +173,7 @@ const ContactSupport: React.FC<ContactSupportProps> = ({ className = '' }) => {
                 name="subject"
                 value={formData.subject}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
                 style={{
                   borderColor: 'rgba(20, 184, 166, 0.2)',
                   background: 'white',
@@ -195,7 +195,7 @@ const ContactSupport: React.FC<ContactSupportProps> = ({ className = '' }) => {
                 value={formData.message}
                 onChange={handleChange}
                 rows={6}
-                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all resize-none"
+                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all resize-none"
                 style={{
                   borderColor: errors.message ? '#ef4444' : 'rgba(20, 184, 166, 0.2)',
                   background: 'white',
