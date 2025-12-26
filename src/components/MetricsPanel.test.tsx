@@ -247,11 +247,11 @@ describe('MetricsPanel', () => {
 
     render(<MetricsPanel />);
     
+    // Should show error message for at least one of the failed fetches
     await waitFor(() => {
-      // Should show one of the error messages for failed fetch
       const errorText = screen.queryByText(/Failed to fetch/i);
       expect(errorText).toBeInTheDocument();
-    }, { timeout: 5000 });
+    }, { timeout: 3000 });
   });
 
   test('displays chart titles after loading data', async () => {
@@ -401,6 +401,49 @@ describe('MetricsPanel', () => {
     // DAU = 250, MAU = 1500, ratio = (250/1500)*100 = 16.7%
     await waitFor(() => {
       expect(screen.getByText('16.7%')).toBeInTheDocument();
+    });
+  });
+
+  test('displays N/A for DAU/MAU ratio when MAU is 0', async () => {
+    const mockActivity = {
+      dau: 100,
+      mau: 0,
+      daily: [
+        { date: "2024-01-01", count: 100 },
+      ],
+    };
+
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      if (url.includes('/user-stats/activity')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockActivity),
+        });
+      } else if (url.includes('/earnings')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            totalPurchaseCount: 0,
+            totalRevenue: 0,
+            daily: [],
+          }),
+        });
+      } else if (url.includes('/user-stats/registrations')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            totalRegistrations: 0,
+            daily: [],
+          }),
+        });
+      }
+      return Promise.reject(new Error('Unknown endpoint'));
+    });
+
+    render(<MetricsPanel />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('N/A')).toBeInTheDocument();
     });
   });
 

@@ -258,7 +258,7 @@ const MetricsPanel: React.FC = () => {
         text: `Failed to fetch earnings: ${error instanceof Error ? error.message : "Unknown error"}`,
         type: "error",
       });
-      throw error;
+      throw error; // Re-throw so Promise.allSettled can track it
     }
   };
 
@@ -284,7 +284,7 @@ const MetricsPanel: React.FC = () => {
         text: `Failed to fetch registrations: ${error instanceof Error ? error.message : "Unknown error"}`,
         type: "error",
       });
-      throw error;
+      throw error; // Re-throw so Promise.allSettled can track it
     }
   };
 
@@ -310,7 +310,7 @@ const MetricsPanel: React.FC = () => {
         text: `Failed to fetch activity: ${error instanceof Error ? error.message : "Unknown error"}`,
         type: "error",
       });
-      throw error;
+      throw error; // Re-throw so Promise.allSettled can track it
     }
   };
 
@@ -321,19 +321,23 @@ const MetricsPanel: React.FC = () => {
     }
 
     setLoading(true);
-    try {
-      await Promise.all([
-        fetchEarnings(),
-        fetchRegistrations(),
-        fetchActivity(),
-      ]);
+    const results = await Promise.allSettled([
+      fetchEarnings(),
+      fetchRegistrations(),
+      fetchActivity(),
+    ]);
+    
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length === 0) {
       setMessage({ text: "All metrics loaded successfully", type: "success" });
-    } catch (error) {
-      console.error("Error fetching metrics:", error);
-      // Error message already set by individual fetch functions
-    } finally {
-      setLoading(false);
+    } else if (failures.length === results.length) {
+      // All failed, error message already set by individual fetch functions
+    } else {
+      // Some succeeded, some failed
+      setMessage({ text: "Some metrics failed to load", type: "error" });
     }
+    
+    setLoading(false);
   };
 
   // Memoize formatters to avoid creating new objects on every render
@@ -494,7 +498,9 @@ const MetricsPanel: React.FC = () => {
             <div style={styles.summaryCard}>
               <div style={styles.summaryLabel}>DAU/MAU Ratio</div>
               <div style={styles.summaryValue}>
-                {((activityData.dau / activityData.mau) * 100).toFixed(1)}%
+                {activityData.mau > 0 
+                  ? `${((activityData.dau / activityData.mau) * 100).toFixed(1)}%`
+                  : 'N/A'}
               </div>
             </div>
           </div>
