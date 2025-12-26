@@ -28,6 +28,22 @@ interface EarningsData {
   daily: DailyEarning[];
 }
 
+interface DailyCount {
+  date: string;
+  count: number;
+}
+
+interface RegistrationsData {
+  totalRegistrations: number;
+  daily: DailyCount[];
+}
+
+interface ActivityData {
+  dau: number;
+  mau: number;
+  daily: DailyCount[];
+}
+
 // 🎨 Styles
 const PRIMARY_COLOR = "#0c4a6e";
 const TEXT_COLOR = "#1e293b";
@@ -133,6 +149,8 @@ const MetricsPanel: React.FC = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [earningsData, setEarningsData] = useState<EarningsData | null>(null);
+  const [registrationsData, setRegistrationsData] = useState<RegistrationsData | null>(null);
+  const [activityData, setActivityData] = useState<ActivityData | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
@@ -159,13 +177,13 @@ const MetricsPanel: React.FC = () => {
   // Auto-fetch data when dates are set or changed
   useEffect(() => {
     if (startDate && endDate) {
-      fetchEarnings();
+      fetchAllData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
   const loadDemoData = () => {
-    const mockData: EarningsData = {
+    const mockEarnings: EarningsData = {
       totalPurchaseCount: 150,
       totalRevenue: 1497.50,
       daily: [
@@ -181,17 +199,48 @@ const MetricsPanel: React.FC = () => {
         { date: "2024-01-10", revenue: 109.60, count: 11 },
       ],
     };
-    setEarningsData(mockData);
+    const mockRegistrations: RegistrationsData = {
+      totalRegistrations: 150,
+      daily: [
+        { date: "2024-01-01", count: 10 },
+        { date: "2024-01-02", count: 15 },
+        { date: "2024-01-03", count: 12 },
+        { date: "2024-01-04", count: 18 },
+        { date: "2024-01-05", count: 10 },
+        { date: "2024-01-06", count: 14 },
+        { date: "2024-01-07", count: 16 },
+        { date: "2024-01-08", count: 13 },
+        { date: "2024-01-09", count: 19 },
+        { date: "2024-01-10", count: 11 },
+      ],
+    };
+    const mockActivity: ActivityData = {
+      dau: 250,
+      mau: 1500,
+      daily: [
+        { date: "2024-01-01", count: 245 },
+        { date: "2024-01-02", count: 260 },
+        { date: "2024-01-03", count: 240 },
+        { date: "2024-01-04", count: 255 },
+        { date: "2024-01-05", count: 235 },
+        { date: "2024-01-06", count: 265 },
+        { date: "2024-01-07", count: 270 },
+        { date: "2024-01-08", count: 250 },
+        { date: "2024-01-09", count: 268 },
+        { date: "2024-01-10", count: 242 },
+      ],
+    };
+    setEarningsData(mockEarnings);
+    setRegistrationsData(mockRegistrations);
+    setActivityData(mockActivity);
     setMessage({ text: "Demo data loaded successfully", type: "success" });
   };
 
   const fetchEarnings = async () => {
     if (!startDate || !endDate) {
-      setMessage({ text: "Please select both start and end dates", type: "error" });
       return;
     }
 
-    setLoading(true);
     try {
       const response = await fetch(
         `${API_BASE}/earnings?start_date=${startDate}&end_date=${endDate}`
@@ -203,13 +252,85 @@ const MetricsPanel: React.FC = () => {
 
       const data: EarningsData = await response.json();
       setEarningsData(data);
-      setMessage({ text: "Earnings data loaded successfully", type: "success" });
     } catch (error) {
       console.error("Error fetching earnings:", error);
       setMessage({
         text: `Failed to fetch earnings: ${error instanceof Error ? error.message : "Unknown error"}`,
         type: "error",
       });
+      throw error;
+    }
+  };
+
+  const fetchRegistrations = async () => {
+    if (!startDate || !endDate) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/user-stats/registrations?start_date=${startDate}&end_date=${endDate}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: RegistrationsData = await response.json();
+      setRegistrationsData(data);
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+      setMessage({
+        text: `Failed to fetch registrations: ${error instanceof Error ? error.message : "Unknown error"}`,
+        type: "error",
+      });
+      throw error;
+    }
+  };
+
+  const fetchActivity = async () => {
+    if (!startDate || !endDate) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/user-stats/activity?start_date=${startDate}&end_date=${endDate}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: ActivityData = await response.json();
+      setActivityData(data);
+    } catch (error) {
+      console.error("Error fetching activity:", error);
+      setMessage({
+        text: `Failed to fetch activity: ${error instanceof Error ? error.message : "Unknown error"}`,
+        type: "error",
+      });
+      throw error;
+    }
+  };
+
+  const fetchAllData = async () => {
+    if (!startDate || !endDate) {
+      setMessage({ text: "Please select both start and end dates", type: "error" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchEarnings(),
+        fetchRegistrations(),
+        fetchActivity(),
+      ]);
+      setMessage({ text: "All metrics loaded successfully", type: "success" });
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
+      // Error message already set by individual fetch functions
     } finally {
       setLoading(false);
     }
@@ -266,11 +387,11 @@ const MetricsPanel: React.FC = () => {
         </div>
         <div style={{ marginTop: "auto", display: "flex", gap: "10px" }}>
           <button
-            onClick={fetchEarnings}
+            onClick={fetchAllData}
             style={getButtonStyle(PRIMARY_COLOR, "white")}
             disabled={loading}
           >
-            {loading ? "Loading..." : "Load Earnings"}
+            {loading ? "Loading..." : "Load All Metrics"}
           </button>
           <button
             onClick={loadDemoData}
@@ -283,21 +404,154 @@ const MetricsPanel: React.FC = () => {
       </div>
 
       {/* Loading State */}
-      {loading && <div style={styles.loadingState}>Loading earnings data...</div>}
+      {loading && <div style={styles.loadingState}>Loading metrics data...</div>}
 
       {/* Empty State */}
-      {!loading && !earningsData && (
+      {!loading && !earningsData && !registrationsData && !activityData && (
         <div style={styles.emptyState}>
-          <p>No earnings data available for the selected date range</p>
+          <p>No metrics data available for the selected date range</p>
           <p style={{ marginTop: "10px", color: "#8b5cf6" }}>
             Or click "Load Demo Data" to see sample charts
           </p>
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* User Registration Metrics */}
+      {!loading && registrationsData && (
+        <>
+          <div style={{ ...styles.chartTitle, fontSize: "22px", marginTop: "40px", marginBottom: "20px" }}>
+            User Registration Statistics
+          </div>
+          <div style={styles.summaryContainer}>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Total Registrations</div>
+              <div style={styles.summaryValue}>{formatNumber(registrationsData.totalRegistrations)}</div>
+            </div>
+          </div>
+
+          {/* Charts */}
+          {registrationsData.daily.length > 0 ? (
+            <>
+              {/* Daily Registrations Chart */}
+              <div style={styles.chartContainer}>
+                <div style={styles.chartTitle}>Daily User Registrations</div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={registrationsData.daily}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#10b981" name="Registrations" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Registration Trend Line Chart */}
+              <div style={styles.chartContainer}>
+                <div style={styles.chartTitle}>Registration Trend</div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={registrationsData.daily}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#10b981"
+                      name="Registrations"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          ) : (
+            <div style={styles.emptyState}>
+              <p>No daily registration data available for the selected date range</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* User Activity Metrics */}
+      {!loading && activityData && (
+        <>
+          <div style={{ ...styles.chartTitle, fontSize: "22px", marginTop: "40px", marginBottom: "20px" }}>
+            User Activity Statistics
+          </div>
+          <div style={styles.summaryContainer}>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Daily Active Users (DAU)</div>
+              <div style={styles.summaryValue}>{formatNumber(activityData.dau)}</div>
+            </div>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>Monthly Active Users (MAU)</div>
+              <div style={styles.summaryValue}>{formatNumber(activityData.mau)}</div>
+            </div>
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryLabel}>DAU/MAU Ratio</div>
+              <div style={styles.summaryValue}>
+                {((activityData.dau / activityData.mau) * 100).toFixed(1)}%
+              </div>
+            </div>
+          </div>
+
+          {/* Charts */}
+          {activityData.daily.length > 0 ? (
+            <>
+              {/* Daily Active Users Chart */}
+              <div style={styles.chartContainer}>
+                <div style={styles.chartTitle}>Daily Active Users</div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={activityData.daily}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#8b5cf6" name="Active Users" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Activity Trend Line Chart */}
+              <div style={styles.chartContainer}>
+                <div style={styles.chartTitle}>Activity Trend</div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={activityData.daily}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#8b5cf6"
+                      name="Active Users"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          ) : (
+            <div style={styles.emptyState}>
+              <p>No daily activity data available for the selected date range</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Earnings Metrics */}
       {!loading && earningsData && (
         <>
+          <div style={{ ...styles.chartTitle, fontSize: "22px", marginTop: "40px", marginBottom: "20px" }}>
+            Earnings Statistics
+          </div>
           <div style={styles.summaryContainer}>
             <div style={styles.summaryCard}>
               <div style={styles.summaryLabel}>Total Purchase Count</div>
